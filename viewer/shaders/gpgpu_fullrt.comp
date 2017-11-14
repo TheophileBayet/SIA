@@ -45,14 +45,52 @@ layout (std430, binding = 4) buffer Meshes
 };
 
 bool intersectBoundingBox(vec4 origin, vec4 dir) {
-	// TODO
-    return false;
+    vec4 Pmin = vec4(bbmin,1);
+    vec4 Pmax = vec4(bbmax,1);
+    vec4 tmin = Pmin - origin;
+    tmin = tmin / dir;
+    vec4 tmax = Pmax - origin;
+    tmax = tmax / dir;
+    vec4 minimum = min(tmax,tmin);
+    vec4 maximum = max(tmax,tmin);
+    float In = max(minimum.x,minimum.y);
+    In = max(In,minimum.z);
+    float Out = min(maximum.x,maximum.y);
+    Out = min(Out,maximum.z);
+    return (Out > In);
 }
 
-bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist) 
+bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
 {
 	// TODO
-    return false;
+    vec4 v0 = vertices[indices[ptr]];
+    vec4 v1 = vertices[indices[ptr+1]];
+    vec4 v2 = vertices[indices[ptr+2]];
+    vec4 e1 = v1 - v0;
+    vec4 e2 = v2 - v0;
+    vec4 t = origin - v0;
+    vec4 p = dir * e2;
+    vec4 q = t * e1;
+    float a = dot(p,e1);
+    if (a > -EPS && a < EPS) {
+        return false;
+    }
+    float coef = 1/a;
+    float b = coef * dot(t,p);
+    if (b < 0.0 || b > 1.0) {
+        return false;
+    }
+    float c = coef * dot(q,dir);
+    if (c < 0.0 || c+b > 1.0) {
+        return false;
+    }
+    float d = coef * dot(q,e2);
+    if (d > EPS) {
+        dist = vec4(b,c,1-b-c,d);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 vec4 interpolateNormal(hitinfo_t h)
@@ -98,11 +136,11 @@ void main(void) {
     if (pix.x >= size.x || pix.y >= size.y) {
         return;
     }
-    vec2 pos = pix / (size - vec2(0.5,0.5)); 
+    vec2 pos = pix / (size - vec2(0.5,0.5));
     // pos in [0,1]^2 Need it in [-1,1]^2:
     pos = 2 * pos - vec2(1.,1.);
 
-    // Step 1: I need pixel coordinates. 
+    // Step 1: I need pixel coordinates.
     vec4 worldPos = vec4(pos.x, pos.y, 1.0, 1.0);
     worldPos = persp_inverse * worldPos;
     worldPos /= worldPos.w;
@@ -113,5 +151,18 @@ void main(void) {
     vec4 eye = (mat_inverse * vec4(0, 0, 0, 1));
     vec4 color = trace(eye, dir);
 
+
+    vec4 dist;
+    if (intersectBoundingBox(eye,dir)) {
+        for(int j = 0; j < indices.length(); j += 3) {
+            if (intersectTriangle(eye,dir,j,dist)) {
+                color = vec4(1.0,0.0,0.0,1.0);
+            } else {
+                color = vec4(0.7,0.7,0.7,1.0);
+            }
+        }
+    } else {
+        color = vec4(0.7,0.7,0.7,1.0);
+    }
     imageStore(framebuffer, pix, color);
 }
