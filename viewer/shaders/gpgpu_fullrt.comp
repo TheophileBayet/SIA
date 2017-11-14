@@ -62,13 +62,9 @@ bool intersectBoundingBox(vec4 origin, vec4 dir) {
 
 bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
 {
-	// TODO
-    vec4 v0 = vertices[indices[ptr]];
-    vec4 v1 = vertices[indices[ptr+1]];
-    vec4 v2 = vertices[indices[ptr+2]];
-    vec4 e1 = v1 - v0;
-    vec4 e2 = v2 - v0;
-    vec4 t = origin - v0;
+    vec4 e1 = vertices[indices[ptr+1]] -vertices[indices[ptr]] ;
+    vec4 e2 = vertices[indices[ptr+2]] - vertices[indices[ptr]];
+    vec4 t = origin - vertices[indices[ptr]];
     vec4 p = dir * e2;
     vec4 q = t * e1;
     float a = dot(p,e1);
@@ -76,17 +72,17 @@ bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
         return false;
     }
     float coef = 1/a;
-    float b = coef * dot(t,p);
-    if (b < 0.0 || b > 1.0) {
+    float alpha = coef * dot(p,t);
+    if (alpha < 0.0 || alpha > 1.0) {
         return false;
     }
-    float c = coef * dot(q,dir);
-    if (c < 0.0 || c+b > 1.0) {
+    float beta = coef * dot(q,dir);
+    if (beta < 0.0 || beta+alpha > 1.0) {
         return false;
     }
-    float d = coef * dot(q,e2);
-    if (d > EPS) {
-        dist = vec4(b,c,1-b-c,d);
+    float lambda = coef * dot(q,e2);
+    if (lambda > EPS) {
+        dist = vec4(alpha,beta,1-alpha-beta,lambda);
         return true;
     } else {
         return false;
@@ -153,16 +149,24 @@ void main(void) {
 
 
     vec4 dist;
-    if (intersectBoundingBox(eye,dir)) {
-        for(int j = 0; j < indices.length(); j += 3) {
-            if (intersectTriangle(eye,dir,j,dist)) {
-                color = vec4(1.0,0.0,0.0,1.0);
-            } else {
-                color = vec4(0.7,0.7,0.7,1.0);
-            }
+    // if (intersectBoundingBox(eye,dir)) {
+    //     for(int j = 0; j < indices.length(); j += 3) {
+    //         if (intersectTriangle(eye,dir,j,dist)) {
+    //             color = vec4(1.0,0.0,0.0,1.0);
+    //         // } else {
+    //         //     color = vec4(1.,1.,1.,1.0);
+    //         }
+    //     }
+    // } else {
+    //     color = vec4(0.7,0.7,0.7,1.0);
+    // }
+    for(int j = 0; j < indices.length(); j += 3) {
+        if (intersectTriangle(eye,dir,j,dist)) {
+            color = vec4(1.0,0.0,0.0,1.0);
+        } else {
+            color = vec4(0.7,0.7,0.7,1.0);
         }
-    } else {
-        color = vec4(0.7,0.7,0.7,1.0);
     }
+
     imageStore(framebuffer, pix, color);
 }
