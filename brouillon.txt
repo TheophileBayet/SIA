@@ -1,0 +1,55 @@
+
+uniform float lightIntensity;
+uniform bool blinnPhong;
+uniform float shininess;
+uniform float eta;
+uniform sampler2D shadowMap;
+
+in vec4 eyeVector;
+in vec4 lightVector;
+in vec4 vertColor;
+in vec4 vertNormal;
+in vec4 lightSpace;
+
+out vec4 fragColor;
+
+void main( void )
+{
+  // récupération de la couleur locale
+  fragColor = vertColor;
+  /*
+  if (blinnPhong){
+        // récupération des variables :
+        float ka = 1;
+        float kd = 0.5;
+        vec4 H = (lightVector + eyeVector) / normalize(lightVector + eyeVector);
+        float cos_theta = dot(H,lightVector);
+        //float sin_2_theta = 1 - (cos_theta*cos_theta) ;
+
+        // Ambiant Lightning :
+        vec4 Ca = vertColor * ka * lightIntensity;
+
+
+        // Diffuse Lightning
+        float max = dot(vertNormal,lightVector) ;
+        if (max < 0 ) max = 0;
+        vec4 Cd = kd * vertColor * max * lightIntensity;
+
+        // Specular Lightning :
+        /*
+        max = dot(H,vertNormal);
+        if(max<0) max = 0 ;
+        max = pow(max,shininess);
+
+        //float ci = pow (eta*eta- sin_2_theta,1/2);
+        //float Fs = pow((cos_theta-ci)/(cos_theta+ci),2);
+        //float Fp = pow((eta*eta*(cos_theta-ci))/(eta*eta*(cos_theta+ci)),2);
+        //float F = (Fs + Fp) /2;
+        //vec4 Cs  = vertColor * max * lightIntensity*F;
+
+        // total
+        fragColor = Ca +Cd ;
+     }
+     */
+}
+

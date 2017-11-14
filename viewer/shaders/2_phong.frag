@@ -1,0 +1,114 @@
+#version 410
+
+uniform float lightIntensity;
+uniform bool blinnPhong;
+uniform float shininess;
+uniform float eta;
+uniform sampler2D shadowMap;
+
+in vec4 eyeVector;
+in vec4 lightVector;
+in vec4 vertColor;
+in vec4 vertNormal;
+in vec4 lightSpace;
+
+out vec4 fragColor;
+
+
+
+
+/*
+* This function calculates the ambiant component of the Blinn-Phong model for lighting
+*/
+vec4 ambiant(vec4 color, float ka, float I){
+  return color*ka*I;
+}
+
+/*
+*This function calculates max(V1.V2,0), where V1 and V2 are both vec4 vectors.
+*/
+
+float max_scalar_zero(vec4 V1, vec4 V2) {
+  float res = max(dot(V1,V2),0);
+  return res;
+}
+
+/*
+* This function calculates the diffuse component of the Blinn-Phong model for lighting
+*/
+vec4 diffuse(vec4 color,vec4 normal,vec4 LightVector, float kd, float I){
+  return color*max_scalar_zero(normal,LightVector)*kd*I;
+}
+
+/*
+* this function calculates the Fresnel coefficient
+*/
+
+float fresnel_coeff(float eta, float cost){
+  float ci = abs(eta*eta + 1 - cost*cost) ;
+  ci = sqrt(ci);
+  float nume = cost - ci;
+  float denom = cost + ci;
+  float Fs = abs(nume/denom);
+  Fs = Fs*Fs;
+  nume = eta*eta*cost - ci;
+  denom = eta*eta*cost + ci;
+  float Fp = abs(nume/denom);
+  Fp = Fp * Fp;
+    return((Fs+Fp)/2);
+  }
+
+
+/*
+* this function calculates the specular component of the Blinn-Phong model for ligthing
+*/
+vec4 specular_blinn(float eta, float cost, vec4 color, vec4 normal, vec4 H, float s, float I){
+  float F = fresnel_coeff(eta,cost);
+  float max = max_scalar_zero(normal,H);
+  max = pow(max,s);
+
+
+  return ( F*max* color *  I);
+}
+
+
+void main( void )
+{
+    // récupération de la couleur locale
+    fragColor = vertColor;
+
+    // récupération des variables :
+    vec4 eyeVectorNorm = normalize(eyeVector);
+    vec4 lightVectorNorm = normalize(lightVector);
+    float ka = 0.5;
+    float kd = 0.5;
+    vec4 H = normalize(eyeVectorNorm +lightVectorNorm);
+    float cos_theta_d = dot(H,lightVectorNorm);
+
+    // Ambiant Lightning :
+    vec4 Ca =ambiant(vertColor,ka,lightIntensity);
+
+
+    // Diffuse Lightning
+    vec4 Cd = diffuse(vertColor,vertNormal,lightVector,kd,lightIntensity);
+
+
+    // Specular Lighting
+    vec4 Cs = vec4(0,0,0,0);
+    if (blinnPhong){
+      // Blinn-Phong Model
+      Cs  = specular_blinn(eta,cos_theta_d,vertColor,vertNormal,H,shininess,lightIntensity);
+
+      // Résultat des tests :
+      // - Retirer F : noir tout le temps sauf blinn-Phong à 0
+      // - Retirer max : noir tout le temps
+      // - Retirer F et max : pas noir
+      // Conclusion : les vecteurs sont mauvais ?
+
+
+     }else{
+      // Cook-Torrance Model
+
+     }
+     fragColor = Ca +Cd +Cs ;
+}
