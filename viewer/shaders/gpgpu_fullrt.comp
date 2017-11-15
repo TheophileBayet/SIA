@@ -65,8 +65,10 @@ bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
     vec4 e1 = vertices[indices[ptr+1]] -vertices[indices[ptr]] ;
     vec4 e2 = vertices[indices[ptr+2]] - vertices[indices[ptr]];
     vec4 t = origin - vertices[indices[ptr]];
-    vec4 p = dir * e2;
-    vec4 q = t * e1;
+    vec3 p_3 = cross(dir.xyz,e2.xyz);
+    vec3 q_3 = cross(t.xyz,e1.xyz);
+    vec4 p = vec4(p_3,0.0);
+    vec4 q = vec4(q_3,0.0);
     float a = dot(p,e1);
     if (a > -EPS && a < EPS) {
         return false;
@@ -81,7 +83,7 @@ bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
         return false;
     }
     float lambda = coef * dot(q,e2);
-    if (lambda > EPS) {
+    if (1000.0 > lambda && lambda > EPS) {
         dist = vec4(alpha,beta,1-alpha-beta,lambda);
         return true;
     } else {
@@ -149,24 +151,24 @@ void main(void) {
 
 
     vec4 dist;
-    // if (intersectBoundingBox(eye,dir)) {
-    //     for(int j = 0; j < indices.length(); j += 3) {
-    //         if (intersectTriangle(eye,dir,j,dist)) {
-    //             color = vec4(1.0,0.0,0.0,1.0);
-    //         // } else {
-    //         //     color = vec4(1.,1.,1.,1.0);
-    //         }
-    //     }
-    // } else {
-    //     color = vec4(0.7,0.7,0.7,1.0);
-    // }
-    for(int j = 0; j < indices.length(); j += 3) {
-        if (intersectTriangle(eye,dir,j,dist)) {
-            color = vec4(1.0,0.0,0.0,1.0);
-        } else {
-            color = vec4(0.7,0.7,0.7,1.0);
+    if (intersectBoundingBox(eye,dir)) {
+        for(int j = 0; j < indices.length(); j += 3) {
+            if (intersectTriangle(eye,dir,j,dist)) {
+                color = vec4(1.0,0.0,0.0,1.0);
+            // } else {
+            //     color = vec4(1.,1.,1.,1.0);
+            }
         }
+    } else {
+        color = vec4(0.7,0.7,0.7,1.0);
     }
+    // for(int j = 0; j < indices.length(); j += 3) {
+    //     if (intersectTriangle(eye,dir,j,dist)) {
+    //         color = vec4(1.0,0.0,0.0,1.0);
+    //     } else {
+    //         color = vec4(0.7,0.7,0.7,1.0);
+    //     }
+    // }
 
     imageStore(framebuffer, pix, color);
 }
