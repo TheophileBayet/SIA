@@ -44,6 +44,60 @@ layout (std430, binding = 4) buffer Meshes
     int indices[];
 };
 
+/*
+* This function calculates the ambiant component of the Blinn-Phong model for lighting
+*/
+vec4 ambiant(vec4 color, float ka){
+  return color*ka*lightIntensity;
+}
+
+/*
+*This function calculates max(V1.V2,0), where V1 and V2 are both vec4 vectors.
+*/
+
+float max_scalar_zero(vec4 V1, vec4 V2) {
+  float res = max(dot(V1,V2),0);
+  return res;
+}
+
+/*
+* This function calculates the diffuse component of the Blinn-Phong model for lighting
+*/
+vec4 diffuse(vec4 color,vec4 normal,vec4 LightVector, float kd){
+  return color*max_scalar_zero(normal,LightVector)*kd*lightIntensity;
+}
+
+/*
+* this function calculates the Fresnel coefficient
+*/
+
+float fresnel_coeff(float cost){
+  float ci = abs(eta*eta + 1 - cost*cost) ;
+  ci = sqrt(ci);
+  float nume = cost - ci;
+  float denom = cost + ci;
+  float Fs = abs(nume/denom);
+  Fs = Fs*Fs;
+  nume = eta*eta*cost - ci;
+  denom = eta*eta*cost + ci;
+  float Fp = abs(nume/denom);
+  Fp = Fp * Fp;
+  return((Fs+Fp)/2);
+  }
+
+
+/*
+* this function calculates the specular component of the Blinn-Phong model for ligthing
+*/
+vec4 specular_blinn(vec4 color, vec4 normal,vec3 toLightSource,vec4 direction){
+  vec4 H = vec4(normalize(toLightSource-direction.xyz),1);
+  float cost = dot(H,vec4(toLightSource,1));
+  float F = fresnel_coeff(cost);
+  float max = max_scalar_zero(normal,H);
+  max = pow(max,shininess);
+  return ( F*max* color *  lightIntensity);
+}
+
 bool intersectBoundingBox(vec4 origin, vec4 dir) {
     vec4 Pmin = vec4(bbmin,1);
     vec4 Pmax = vec4(bbmax,1);
@@ -109,25 +163,35 @@ bool intersectGround(vec4 origin, vec4 dir, out float lambda) {
 
 vec4 interpolateNormal(hitinfo_t h)
 {
-	// TODO
-    return vec4(1);
+  vec4 n0 = normals[indices[h.hit_vptr]];
+  vec4 n1 = normals[indices[h.hit_vptr+1]];
+  vec4 n2 = normals[indices[h.hit_vptr+2]];
+  return h.t.z*n0+h.t.x*n1+h.t.y*n2;
+
 }
 
 vec4 interpolateColor(hitinfo_t h)
 {
-	// TODO
-	return vec4(1);
+  vec4 colV0 = colors[indices[h.hit_vptr]];
+  vec4 colV1 = colors[indices[h.hit_vptr+1]];
+  vec4 colV2 = colors[indices[h.hit_vptr+2]];
+	return h.t.z*colV0+h.t.x*colV1+h.t.y*colV2;
 }
 
 bool isIntersected(vec4 origin, vec4 dir, out hitinfo_t h)
 {
-    vec4 dist; // stores distance + barycentric coord
+  vec4 dist; // stores distance + barycentric coord
 	bool hit = false;
-	h.t.x = radius * MAX_SCENE_BOUNDS;
+  vec4 normal ;
+	h.t.w = radius * MAX_SCENE_BOUNDS;
 	if(intersectBoundingBox(origin, dir)) {
 		for(int j = 0; j < indices.length(); j += 3) {
 			if(intersectTriangle(origin, dir, j, dist)) {
-				// TODOtexture2DPro
+                hit = true ;
+                if(dist.w<h.t.w){
+                    h.t = dist;
+                    h.hit_vptr = j;
+                }
 			}
 		}
 	}
@@ -139,8 +203,31 @@ const int MAX_TRACE = 1;
 
 vec4 trace(vec4 origin, vec4 dir)
 {
-	// TODO: trace a ray in the scene, see what it intersects, bounce around
-    return vec4(1);
+  // origin = eye.
+  hitinfo_t inter ;
+  if(isIntersected(origin,dir,inter)){
+    // Intersection avec un triangle
+    vec3 pointInter = origin.xyz + inter.t.w*dir.xyz;
+    vec3 toLightSource = normalize(lightPosition-pointInter);
+    hitinfo_t t ;
+    if(isIntersected(vec4(pointInter.xyz-0.001*dir.xyz,1),vec4(toLightSource,1),t)){
+      // Eclairage ambiant
+      vec4 color = interpolateColor(inter);
+      return ambiant(color,0.5);
+    }else{
+      // Eclairage total
+      // return vec4(1,0,0,1);
+      vec4 color = interpolateColor(inter);
+      vec4 normal = interpolateNormal(inter);
+      vec4  Ca = ambiant(color,0.5);
+      vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
+      vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
+      // return  Ca + Cd;
+      return Ca + Cd + Cs ;
+    }
+  }else{
+    return vec4(0.7,0.7,0.7,1.0);
+  }
 }
 
 layout (local_size_x = 8, local_size_y = 8) in;
