@@ -137,7 +137,7 @@ bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
         return false;
     }
     float lambda = coef * dot(q,e2);
-    if (1000.0 > lambda && lambda > EPS) {
+    if (10000.0 > lambda && lambda > EPS) {
         dist = vec4(alpha,beta,1-alpha-beta,lambda);
         return true;
     } else {
@@ -145,7 +145,23 @@ bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
     }
 }
 
-vec4 interpolateNormal(hitinfo_t h,vec4 dir)
+bool intersectGround(vec4 origin, vec4 dir, out float lambda) {
+    vec4 normal = vec4(0.0,1.0,0.0,0.0);
+    vec4 PQ = vec4(0.0,-groundDistance,0.0,1.0) - origin;
+    float denom = dot(dir,normal);
+    if (abs(denom) < EPS) {
+        return false;
+    }
+    float lambda_temp = dot(PQ,normal) / denom;
+    if (lambda_temp > EPS) {
+        lambda = lambda_temp;
+        return true;
+    }
+    lambda = 10000.0;
+    return false;
+}
+
+vec4 interpolateNormal(hitinfo_t h)
 {
   vec4 n0 = normals[indices[h.hit_vptr]];
   vec4 n1 = normals[indices[h.hit_vptr+1]];
@@ -202,7 +218,7 @@ vec4 trace(vec4 origin, vec4 dir)
       // Eclairage total
       // return vec4(1,0,0,1);
       vec4 color = interpolateColor(inter);
-      vec4 normal = interpolateNormal(inter,dir);
+      vec4 normal = interpolateNormal(inter);
       vec4  Ca = ambiant(color,0.5);
       vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
       vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
@@ -237,17 +253,41 @@ void main(void) {
     vec4 color = trace(eye, dir);
 
 
-    // vec4 dist;
-    // if (intersectBoundingBox(eye,dir)) {
-    //     for(int j = 0; j < indices.length(); j += 3) {
-    //         if (intersectTriangle(eye,dir,j,dist)) {
-    //             color = vec4(1.0,0.0,0.0,1.0);
-    //         // } else {
-    //         //     color = vec4(1.,1.,1.,1.0);
-    //         }
-    //     }
-    // } else {
-    //     color = vec4(0.7,0.7,0.7,1.0);
+    vec4 dist;
+    float lambda;
+    vec4 color1;
+    vec4 color2;
+
+    if (intersectBoundingBox(eye,dir)) {
+        for(int j = 0; j < indices.length(); j += 3) {
+            if (intersectTriangle(eye,dir,j,dist)) {
+                color1 = vec4(1.0,0.0,0.0,1.0);
+                if (intersectGround(eye,dir,lambda)) {
+                    // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
+                    color2 = vec4(0.0,1.0,0.0,1.0);
+                    if (lambda > dist.w) {
+                        color = color1;
+                    } else {
+                        color = color2;
+                    }
+                } else {
+                    color = color1;
+                }
+            } else if (intersectGround(eye,dir,lambda)) {
+                color = vec4(0.0,1.0,0.0,1.0);
+            } else {
+                color = vec4(0.7,0.7,0.7,1.0);
+            }
+        }
+    } else if (intersectGround(eye,dir,lambda)) {
+        color = vec4(0.0,1.0,0.0,1.0);
+        // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
+    } else {
+        color = vec4(0.7,0.7,0.7,1.0);
+    }
+    // vec4 intersection;
+    // if (intersectGround(eye,dir,normal,intersection)) {
+    //     color = texture2DProj(colorTexture,intersection);
     // }
     // for(int j = 0; j < indices.length(); j += 3) {
     //     if (intersectTriangle(eye,dir,j,dist)) {
