@@ -62,7 +62,7 @@ bool intersectBoundingBox(vec4 origin, vec4 dir) {
 
 bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
 {
-    vec4 e1 = vertices[indices[ptr+1]] -vertices[indices[ptr]] ;
+    vec4 e1 = vertices[indices[ptr+1]] - vertices[indices[ptr]] ;
     vec4 e2 = vertices[indices[ptr+2]] - vertices[indices[ptr]];
     vec4 t = origin - vertices[indices[ptr]];
     vec3 p_3 = cross(dir.xyz,e2.xyz);
@@ -127,7 +127,7 @@ bool isIntersected(vec4 origin, vec4 dir, out hitinfo_t h)
 	if(intersectBoundingBox(origin, dir)) {
 		for(int j = 0; j < indices.length(); j += 3) {
 			if(intersectTriangle(origin, dir, j, dist)) {
-				// TODO
+				// TODOtexture2DPro
 			}
 		}
 	}
@@ -167,48 +167,47 @@ void main(void) {
 
 
     vec4 dist;
+    int nbr_triangle = indices.length() + 1;
+    vec4 closest_triangle = vec4(0.0,0.0,0.0,10000.0);
+    vec4 closest_color = vec4(0.0,0.0,0.0,1.0);
     float lambda;
-    vec4 color1;
-    vec4 color2;
+    vec4 rouge;
+    vec4 vert;
 
     if (intersectBoundingBox(eye,dir)) {
         for(int j = 0; j < indices.length(); j += 3) {
             if (intersectTriangle(eye,dir,j,dist)) {
-                color1 = vec4(1.0,0.0,0.0,1.0);
-                if (intersectGround(eye,dir,lambda)) {
-                    // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
-                    color2 = vec4(0.0,1.0,0.0,1.0);
-                    if (lambda > dist.w) {
-                        color = color1;
-                    } else {
-                        color = color2;
-                    }
-                } else {
-                    color = color1;
+                rouge = vec4(1.0,0.0,0.0,1.0);
+                if (dist.w < closest_triangle.w) {
+                    closest_triangle = dist;
+                    closest_color = rouge;
+                    nbr_triangle = j;
                 }
-            } else if (intersectGround(eye,dir,lambda)) {
-                color = vec4(0.0,1.0,0.0,1.0);
+            }
+        }
+        if (intersectGround(eye,dir,lambda)) {
+            vec4 intersection = eye+lambda*dir;
+            vert = texture2D(colorTexture,vec2(intersection.x,intersection.z));
+            // vert = vec4(0.0,1.0,0.0,1.0);
+            if (intersectTriangle(eye,dir,nbr_triangle,dist) && closest_triangle.w < lambda) {
+                color = closest_color;
+            } else {
+                color = vert;
+            }
+        } else {
+            if (intersectTriangle(eye,dir,nbr_triangle,dist)) {
+                color = closest_color;
             } else {
                 color = vec4(0.7,0.7,0.7,1.0);
             }
         }
     } else if (intersectGround(eye,dir,lambda)) {
-        color = vec4(0.0,1.0,0.0,1.0);
-        // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
+        vec4 intersection = eye+lambda*dir;
+        color = texture2D(colorTexture,vec2(intersection.x,intersection.z));
+        // color = vec4(0.0,1.0,0.0,1.0);
     } else {
         color = vec4(0.7,0.7,0.7,1.0);
     }
-    // vec4 intersection;
-    // if (intersectGround(eye,dir,normal,intersection)) {
-    //     color = texture2DProj(colorTexture,intersection);
-    // }
-    // for(int j = 0; j < indices.length(); j += 3) {
-    //     if (intersectTriangle(eye,dir,j,dist)) {
-    //         color = vec4(1.0,0.0,0.0,1.0);
-    //     } else {
-    //         color = vec4(0.7,0.7,0.7,1.0);
-    //     }
-    // }
 
     imageStore(framebuffer, pix, color);
 }
