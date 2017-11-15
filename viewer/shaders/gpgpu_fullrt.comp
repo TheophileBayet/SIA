@@ -145,11 +145,13 @@ bool intersectTriangle(vec4 origin, vec4 dir, int ptr, out vec4 dist)
     }
 }
 
-vec4 interpolateNormal(hitinfo_t h)
+vec4 interpolateNormal(hitinfo_t h,vec4 dir)
 {
-  vec4 e1 = vertices[indices[h.hit_vptr+1]] -vertices[indices[h.hit_vptr]] ;
-  vec4 e2 = vertices[indices[h.hit_vptr+2]] - vertices[indices[h.hit_vptr]];
-  return vec4(cross(normalize(e1.xyz),normalize(e2.xyz)),1);
+  vec4 n0 = normals[indices[h.hit_vptr]];
+  vec4 n1 = normals[indices[h.hit_vptr+1]];
+  vec4 n2 = normals[indices[h.hit_vptr+2]];
+  return h.t.z*n0+h.t.x*n1+h.t.y*n2;
+
 }
 
 vec4 interpolateColor(hitinfo_t h)
@@ -192,18 +194,19 @@ vec4 trace(vec4 origin, vec4 dir)
     vec3 pointInter = origin.xyz + inter.t.w*dir.xyz;
     vec3 toLightSource = normalize(lightPosition-pointInter);
     hitinfo_t t ;
-    if(isIntersected(vec4(pointInter,1),vec4(toLightSource,1),t)){
+    if(isIntersected(vec4(pointInter.xyz-0.001*dir.xyz,1),vec4(toLightSource,1),t)){
       // Eclairage ambiant
-      vec4 color = interpolateColor(t);
+      vec4 color = interpolateColor(inter);
       return ambiant(color,0.5);
     }else{
       // Eclairage total
+      // return vec4(1,0,0,1);
       vec4 color = interpolateColor(inter);
+      vec4 normal = interpolateNormal(inter,dir);
       vec4  Ca = ambiant(color,0.5);
-      vec4 normal = interpolateNormal(inter);
-      vec4 Cd = diffuse(color,normal,vec4(-toLightSource,1),0.5);
+      vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
       vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
-      // return Ca;
+      // return  Ca + Cd;
       return Ca + Cd + Cs ;
     }
   }else{
