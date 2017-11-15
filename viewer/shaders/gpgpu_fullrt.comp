@@ -54,7 +54,6 @@ vec4 ambiant(vec4 color, float ka){
 /*
 *This function calculates max(V1.V2,0), where V1 and V2 are both vec4 vectors.
 */
-
 float max_scalar_zero(vec4 V1, vec4 V2) {
   float res = max(dot(V1,V2),0);
   return res;
@@ -68,7 +67,7 @@ vec4 diffuse(vec4 color,vec4 normal,vec4 LightVector, float kd){
 }
 
 /*
-* this function calculates the Fresnel coefficient
+* This function calculates the Fresnel coefficient
 */
 
 float fresnel_coeff(float cost){
@@ -87,7 +86,7 @@ float fresnel_coeff(float cost){
 
 
 /*
-* this function calculates the specular component of the Blinn-Phong model for ligthing
+* This function calculates the specular component of the Blinn-Phong model for ligthing
 */
 vec4 specular_blinn(vec4 color, vec4 normal,vec3 toLightSource,vec4 direction){
   vec4 H = vec4(normalize(toLightSource-direction.xyz),1);
@@ -181,8 +180,9 @@ vec4 interpolateColor(hitinfo_t h)
 bool isIntersected(vec4 origin, vec4 dir, out hitinfo_t h)
 {
   vec4 dist; // stores distance + barycentric coord
+  float lambda; // stores the lambda value when there is a hit on the ground
 	bool hit = false;
-  vec4 normal ;
+  vec4 normal = vec4(0.0,1.0,0.0,0.0);
 	h.t.w = radius * MAX_SCENE_BOUNDS;
 	if(intersectBoundingBox(origin, dir)) {
 		for(int j = 0; j < indices.length(); j += 3) {
@@ -194,7 +194,18 @@ bool isIntersected(vec4 origin, vec4 dir, out hitinfo_t h)
                 }
 			}
 		}
-	}
+        if (intersectGround(origin,dir,lambda)) {
+            if (h.t.w > lambda) {
+                h.t.w = lambda;
+                h.hit_vptr = indices.length() + 1;
+                hit = true;
+            }
+        }
+    } else if (intersectGround(origin,dir,lambda)) {
+        h.t.w = lambda;
+        h.hit_vptr = indices.length() + 1;
+        hit = true;
+    }
 	return hit;
 }
 
@@ -206,24 +217,30 @@ vec4 trace(vec4 origin, vec4 dir)
   // origin = eye.
   hitinfo_t inter ;
   if(isIntersected(origin,dir,inter)){
-    // Intersection avec un triangle
-    vec3 pointInter = origin.xyz + inter.t.w*dir.xyz;
-    vec3 toLightSource = normalize(lightPosition-pointInter);
-    hitinfo_t t ;
-    if(isIntersected(vec4(pointInter.xyz-0.001*dir.xyz,1),vec4(toLightSource,1),t)){
-      // Eclairage ambiant
-      vec4 color = interpolateColor(inter);
-      return ambiant(color,0.5);
-    }else{
-      // Eclairage total
-      // return vec4(1,0,0,1);
-      vec4 color = interpolateColor(inter);
-      vec4 normal = interpolateNormal(inter);
-      vec4  Ca = ambiant(color,0.5);
-      vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
-      vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
-      // return  Ca + Cd;
-      return Ca + Cd + Cs ;
+    if (inter.hit_vptr < indices.length() + 1) {
+      // Intersection avec un triangle
+      vec3 pointInter = origin.xyz + inter.t.w*dir.xyz;
+      vec3 toLightSource = normalize(lightPosition-pointInter);
+      hitinfo_t t ;
+      if(isIntersected(vec4(pointInter.xyz-0.001*dir.xyz,1),vec4(toLightSource,1),t)){
+        // Eclairage ambiant
+        vec4 color = interpolateColor(inter);
+        return ambiant(color,0.5);
+      }else{
+        // Eclairage total
+        // return vec4(1,0,0,1);
+        vec4 color = interpolateColor(inter);
+        vec4 normal = interpolateNormal(inter);
+        vec4  Ca = ambiant(color,0.5);
+        vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
+        vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
+        // return  Ca + Cd;
+        return Ca + Cd + Cs ;
+      }
+    } else {
+      // Intersection avec le sol
+      vec4 intersection = origin + inter.t.w * dir;
+      return texture2D(colorTexture,vec2(intersection.x,intersection.z));
     }
   }else{
     return vec4(0.7,0.7,0.7,1.0);
@@ -252,49 +269,49 @@ void main(void) {
     vec4 eye = (mat_inverse * vec4(0, 0, 0, 1));
     vec4 color = trace(eye, dir);
 
-
-    vec4 dist;
-    int nbr_triangle = indices.length() + 1;
-    vec4 closest_triangle = vec4(0.0,0.0,0.0,10000.0);
-    vec4 closest_color = vec4(0.0,0.0,0.0,1.0);
-    float lambda;
-    vec4 rouge;
-    vec4 vert;
-
-    if (intersectBoundingBox(eye,dir)) {
-        for(int j = 0; j < indices.length(); j += 3) {
-            if (intersectTriangle(eye,dir,j,dist)) {
-                rouge = vec4(1.0,0.0,0.0,1.0);
-                if (dist.w < closest_triangle.w) {
-                    closest_triangle = dist;
-                    closest_color = rouge;
-                    nbr_triangle = j;
-                }
-            }
-        }
-        if (intersectGround(eye,dir,lambda)) {
-            vec4 intersection = eye+lambda*dir;
-            vert = texture2D(colorTexture,vec2(intersection.x,intersection.z));
-            // vert = vec4(0.0,1.0,0.0,1.0);
-            if (intersectTriangle(eye,dir,nbr_triangle,dist) && closest_triangle.w < lambda) {
-                color = closest_color;
-            } else {
-                color = vert;
-            }
-        } else {
-            if (intersectTriangle(eye,dir,nbr_triangle,dist)) {
-                color = closest_color;
-            } else {
-                color = vec4(0.7,0.7,0.7,1.0);
-            }
-        }
-    } else if (intersectGround(eye,dir,lambda)) {
-        vec4 intersection = eye+lambda*dir;
-        color = texture2D(colorTexture,vec2(intersection.x,intersection.z));
-        // color = vec4(0.0,1.0,0.0,1.0);
-    } else {
-        color = vec4(0.7,0.7,0.7,1.0);
-    }
+    //
+    // vec4 dist;
+    // int nbr_triangle = indices.length() + 1;
+    // vec4 closest_triangle = vec4(0.0,0.0,0.0,10000.0);
+    // vec4 closest_color = vec4(0.0,0.0,0.0,1.0);
+    // float lambda;
+    // vec4 rouge;
+    // vec4 vert;
+    //
+    // if (intersectBoundingBox(eye,dir)) {
+    //     for(int j = 0; j < indices.length(); j += 3) {
+    //         if (intersectTriangle(eye,dir,j,dist)) {
+    //             rouge = vec4(1.0,0.0,0.0,1.0);
+    //             if (dist.w < closest_triangle.w) {
+    //                 closest_triangle = dist;
+    //                 closest_color = rouge;
+    //                 nbr_triangle = j;
+    //             }
+    //         }
+    //     }
+    //     if (intersectGround(eye,dir,lambda)) {
+    //         vec4 intersection = eye+lambda*dir;
+    //         vert = texture2D(colorTexture,vec2(intersection.x,intersection.z));
+    //         // vert = vec4(0.0,1.0,0.0,1.0);
+    //         if (intersectTriangle(eye,dir,nbr_triangle,dist) && closest_triangle.w < lambda) {
+    //             color = closest_color;
+    //         } else {
+    //             color = vert;
+    //         }
+    //     } else {
+    //         if (intersectTriangle(eye,dir,nbr_triangle,dist)) {
+    //             color = closest_color;
+    //         } else {
+    //             color = vec4(0.7,0.7,0.7,1.0);
+    //         }
+    //     }
+    // } else if (intersectGround(eye,dir,lambda)) {
+    //     vec4 intersection = eye+lambda*dir;
+    //     color = texture2D(colorTexture,vec2(intersection.x,intersection.z));
+    //     // color = vec4(0.0,1.0,0.0,1.0);
+    // } else {
+    //     color = vec4(0.7,0.7,0.7,1.0);
+    // }
 
     imageStore(framebuffer, pix, color);
 }
