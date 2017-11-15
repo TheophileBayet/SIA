@@ -8,6 +8,7 @@ uniform mat4 persp_inverse;
 uniform float lightIntensity;
 uniform vec3 lightPosition;
 uniform float shininess;
+uniform int refractions;
 uniform float eta;
 uniform vec3 bbmin;
 uniform vec3 bbmax;
@@ -15,13 +16,21 @@ uniform float radius;
 uniform float groundDistance;
 uniform vec3 center;
 
-#define MAX_SCENE_BOUNDS    10.0
+#define MAX_SCENE_BOUNDS    10
 #define EPS                 0.000001
 
 
 struct hitinfo_t {
     vec4 t;
     int hit_vptr;
+};
+
+struct Pt_t {
+  vec4 origin;
+  vec4 dir;
+  vec3 pt_hit;
+  vec4 normal;
+  vec4 color;
 };
 
 layout (std430, binding = 1) buffer Vertices
@@ -195,11 +204,40 @@ bool isIntersected(vec4 origin, vec4 dir, out hitinfo_t h)
 			}
 		}
 	}
+  // TODO : recherche intersection avec la texture.
 	return hit;
 }
 
 const int MAX_TRACE = 1;
 
+bool fillBouncesArray(vec4 origin, vec4 dir,out Pt_t inter ){
+  hitinfo_t info;
+  if(isIntersected(origin,dir,info)){
+    inter.origin=origin;
+    inter.dir=dir;
+    inter.pt_hit = origin.xyz + info.t.w*dir.xyz;
+    inter.normal = interpolateNormal(info);
+    inter.color = interpolateColor(info);
+    return true;
+  }
+  return false;
+}
+
+void traceRays(vec4 origin, vec4 dir){
+  Pt_t inter_array[MAX_SCENE_BOUNDS];
+  Pt_t current;
+  for(int i = 0 ; i<MAX_SCENE_BOUNDS; i++){
+    if(fillBouncesArray(origin,dir,current)){
+      origin = vec4(current.pt_hit,1);
+      dir = reflect(dir,current.normal);
+    }else{
+      // Si on a pas rebondi => on sort !
+      break;
+    }
+  }
+  // On a le tableau rempli, il faut déterminer la couleur
+
+}
 
 vec4 trace(vec4 origin, vec4 dir)
 {
@@ -216,19 +254,19 @@ vec4 trace(vec4 origin, vec4 dir)
       return ambiant(color,0.5);
     }else{
       // Eclairage total
-      // return vec4(1,0,0,1);
       vec4 color = interpolateColor(inter);
       vec4 normal = interpolateNormal(inter);
       vec4  Ca = ambiant(color,0.5);
       vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
       vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
-      // return  Ca + Cd;
       return Ca + Cd + Cs ;
     }
   }else{
     return vec4(0.7,0.7,0.7,1.0);
   }
 }
+
+
 
 layout (local_size_x = 8, local_size_y = 8) in;
 void main(void) {
@@ -257,34 +295,34 @@ void main(void) {
     float lambda;
     vec4 color1;
     vec4 color2;
-
-    if (intersectBoundingBox(eye,dir)) {
-        for(int j = 0; j < indices.length(); j += 3) {
-            if (intersectTriangle(eye,dir,j,dist)) {
-                color1 = vec4(1.0,0.0,0.0,1.0);
-                if (intersectGround(eye,dir,lambda)) {
-                    // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
-                    color2 = vec4(0.0,1.0,0.0,1.0);
-                    if (lambda > dist.w) {
-                        color = color1;
-                    } else {
-                        color = color2;
-                    }
-                } else {
-                    color = color1;
-                }
-            } else if (intersectGround(eye,dir,lambda)) {
-                color = vec4(0.0,1.0,0.0,1.0);
-            } else {
-                color = vec4(0.7,0.7,0.7,1.0);
-            }
-        }
-    } else if (intersectGround(eye,dir,lambda)) {
-        color = vec4(0.0,1.0,0.0,1.0);
-        // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
-    } else {
-        color = vec4(0.7,0.7,0.7,1.0);
-    }
+    //
+    // if (intersectBoundingBox(eye,dir)) {
+    //     for(int j = 0; j < indices.length(); j += 3) {
+    //         if (intersectTriangle(eye,dir,j,dist)) {
+    //             color1 = vec4(1.0,0.0,0.0,1.0);
+    //             if (intersectGround(eye,dir,lambda)) {
+    //                 // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
+    //                 color2 = vec4(0.0,1.0,0.0,1.0);
+    //                 if (lambda > dist.w) {
+    //                     color = color1;
+    //                 } else {
+    //                     color = color2;
+    //                 }
+    //             } else {
+    //                 color = color1;
+    //             }
+    //         } else if (intersectGround(eye,dir,lambda)) {
+    //             color = vec4(0.0,1.0,0.0,1.0);
+    //         } else {
+    //             color = vec4(0.7,0.7,0.7,1.0);
+    //         }
+    //     }
+    // } else if (intersectGround(eye,dir,lambda)) {
+    //     color = vec4(0.0,1.0,0.0,1.0);
+    //     // color2 = texture2DProj(colorTexture,eye+lambda1*dir);
+    // } else {
+    //     color = vec4(0.7,0.7,0.7,1.0);
+    // }
     // vec4 intersection;
     // if (intersectGround(eye,dir,normal,intersection)) {
     //     color = texture2DProj(colorTexture,intersection);
