@@ -220,35 +220,6 @@ bool isIntersected(vec4 origin, vec4 dir, out hitinfo_t h)
 
 const int MAX_TRACE = 1;
 
-bool fillBouncesArray(vec4 origin, vec4 dir,out Pt_t inter ){
-  hitinfo_t info;
-  if(isIntersected(origin,dir,info)){
-    inter.origin=origin;
-    inter.dir=dir;
-    inter.pt_hit = origin.xyz + info.t.w*dir.xyz;
-    inter.normal = interpolateNormal(info);
-    inter.color = interpolateColor(info);
-    return true;
-  }
-  return false;
-}
-
-void traceRays(vec4 origin, vec4 dir){
-  Pt_t inter_array[MAX_SCENE_BOUNDS];
-  Pt_t current;
-  for(int i = 0 ; i<MAX_SCENE_BOUNDS; i++){
-    if(fillBouncesArray(origin,dir,current)){
-      origin = vec4(current.pt_hit,1);
-      dir = reflect(dir,current.normal);
-    }else{
-      // Si on a pas rebondi => on sort !
-      break;
-    }
-  }
-  // On a le tableau rempli, il faut déterminer la couleur
-
-}
-
 vec4 trace(vec4 origin, vec4 dir)
 {
   // origin = eye.
@@ -282,6 +253,68 @@ vec4 trace(vec4 origin, vec4 dir)
   }else{
     return vec4(0.7,0.7,0.7,1.0);
   }
+}
+
+bool fillBouncesArray(vec4 origin, vec4 dir,out Pt_t inter ){
+  hitinfo_t info;
+  if(isIntersected(origin,dir,info)){
+    inter.origin=origin;
+    inter.dir=dir;
+    inter.pt_hit = origin.xyz + info.t.w*dir.xyz;
+    inter.normal = interpolateNormal(info);
+    inter.color = trace(origin,dir);
+    //TODO : Check le trace, on ne compute pas l'orientation de la couleur ici à priori
+    return true;
+  }
+  return false;
+}
+
+vec4 computeColor(in Pt_t tab[MAX_SCENE_BOUNDS]){
+  int max_int = 0 ;
+  vec4 color = vec4(0,0,0,0);
+  while(tab[max_int].dir!=vec4(0,0,0,0)){
+    max_int +=1;
+  }
+  if(max_int>0){
+    max_int-=1;
+    color = tab[max_int].color;
+    float dist_x, dist_y, dist, F, cost;
+    vec4 H ;
+    vec3 toLightSource;
+    while(max_int>0){
+      max_int -=1;
+      dist_x = tab[max_int].pt_hit.x-tab[max_int+1].pt_hit.x;
+      dist_y = tab[max_int].pt_hit.y-tab[max_int+1].pt_hit.y;
+      dist = sqrt(dist_x*dist_x + dist_y*dist_y);
+      toLightSource = normalize(lightPosition-tab[max_int].pt_hit);
+      H = vec4(normalize(toLightSource-reflect(tab[max_int].dir,tab[max_int].normal).xyz),1);
+      cost = dot(H,vec4(toLightSource,1));
+      F = fresnel_coeff(cost);
+      color = F/(dist*dist) * color + tab[max_int].color;
+    }
+  }
+  return color;
+}
+
+vec4 traceRays(vec4 origin, vec4 dir){
+  Pt_t inter_array[MAX_SCENE_BOUNDS];
+  Pt_t current;
+  Pt_t null = {vec4(0,0,0,0),vec4(0,0,0,0),vec3(0,0,0),vec4(0,0,0,0),vec4(0,0,0,0)};
+  for(int i = 0 ; i<MAX_SCENE_BOUNDS; i++){
+    if(fillBouncesArray(origin,dir,current)){
+      inter_array[i]=current;
+      origin = vec4(current.pt_hit,1);
+      dir = reflect(dir,current.normal);
+    }else{
+      // Si on a pas rebondi => on sort ! ( on remplis le tableau de points vides)
+      while(i<MAX_SCENE_BOUNDS){
+        inter_array[i]=null;
+        i+=1;
+      }
+    }
+  }
+  // On a le tableau rempli, il faut déterminer la couleur
+  return computeColor(inter_array);
 }
 
 
