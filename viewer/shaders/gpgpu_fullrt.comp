@@ -26,11 +26,11 @@ struct hitinfo_t {
 };
 
 struct Pt_t {
-  vec4 origin;
-  vec4 dir;
-  vec3 pt_hit;
-  vec4 normal;
-  vec4 color;
+    vec4 origin;
+    vec4 dir;
+    vec3 pt_hit;
+    vec4 normal;
+    vec4 color;
 };
 
 layout (std430, binding = 1) buffer Vertices
@@ -285,7 +285,7 @@ bool fillBouncesArray(vec4 origin, vec4 dir,out Pt_t inter ){
     inter.pt_hit = origin.xyz + info.t.w*dir.xyz;
     inter.normal = interpolateNormal(info);
     inter.color = trace(origin,dir);
-    //TODO : Check le trace, on ne compute pas l'orientation de la couleur ici à priori
+    //TODO : Check le trace, on ne calcule pas l'orientation de la couleur ici à priori
     return true;
   }
   return false;
@@ -328,7 +328,7 @@ vec4 traceRays(vec4 origin, vec4 dir){
       origin = vec4(current.pt_hit,1);
       dir = reflect(dir,current.normal);
     }else{
-      // Si on a pas rebondi => on sort ! ( on remplis le tableau de points vides)
+      // Si on n'a pas rebondi => on sort ! ( on remplit le tableau de points vides)
       while(i<MAX_SCENE_BOUNDS){
         inter_array[i]=null;
         i+=1;

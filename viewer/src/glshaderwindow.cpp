@@ -279,7 +279,7 @@ QWidget *glShaderWindow::makeAuxWindow()
     outer->addWidget(refractionsSlider);
 
 
-// inner radius slider for the bubbles
+    // inner radius slider for the bubbles
     QSlider* innerRadiusSlider = new QSlider(Qt::Horizontal);
     innerRadiusSlider->setTickPosition(QSlider::TicksBelow);
     innerRadiusSlider->setMinimum(25);
