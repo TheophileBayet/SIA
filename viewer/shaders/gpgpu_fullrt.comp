@@ -301,7 +301,7 @@ vec4 computeColor(in Pt_t tab[MAX_SCENE_BOUNDS]){
     max_int-=1;
     color = tab[max_int].color;
     float dist_x, dist_y, dist, F, cost;
-    vec4 H ;
+    vec4 H;
     vec3 toLightSource;
     while(max_int>0){
       max_int -=1;
@@ -361,7 +361,8 @@ void main(void) {
     // Step 2: ray direction:
     vec4 dir = normalize((mat_inverse * worldPos));
     vec4 eye = (mat_inverse * vec4(0, 0, 0, 1));
-    vec4 color = trace(eye, dir);
+    // vec4 color = trace(eye, dir);
+    vec4 color = traceRays(eye,dir);
 
     imageStore(framebuffer, pix, color);
 }
