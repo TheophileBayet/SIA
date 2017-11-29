@@ -26,7 +26,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
-      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true), eta(1.5), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
+      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true), eta(1.5), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false),
       m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
@@ -188,6 +188,19 @@ void glShaderWindow::transparentClicked()
     renderNow();
 }
 
+
+void glShaderWindow::directClicked()
+{
+    lightning = true;
+    renderNow();
+}
+
+void glShaderWindow::indirectClicked()
+{
+    lightning = false;
+    renderNow();
+}
+
 void glShaderWindow::opaqueClicked()
 {
     transparent = false;
@@ -259,6 +272,21 @@ QWidget *glShaderWindow::makeAuxWindow()
     vbox2->addWidget(transparent2);
     groupBox2->setLayout(vbox2);
     buttons->addWidget(groupBox2);
+    outer->addLayout(buttons);
+
+
+    QGroupBox *groupBox3 = new QGroupBox("Lightning:");
+    QRadioButton *lightning1 = new QRadioButton("&Direct");
+    QRadioButton *lightning2 = new QRadioButton("&Indirect");
+    if (lightning) lightning1->setChecked(true);
+    else lightning2->setChecked(true);
+    connect(lightning1, SIGNAL(clicked()), this, SLOT(directClicked()));
+    connect(lightning2, SIGNAL(clicked()), this, SLOT(indirectClicked()));
+    QVBoxLayout *vbox3 = new QVBoxLayout;
+    vbox3->addWidget(lightning1);
+    vbox3->addWidget(lightning2);
+    groupBox3->setLayout(vbox3);
+    buttons->addWidget(groupBox3);
     outer->addLayout(buttons);
 
     // number of refractions
@@ -1125,6 +1153,7 @@ void glShaderWindow::render()
         compute_program->setUniformValue("lightIntensity", 1.0f);
         compute_program->setUniformValue("blinnPhong", blinnPhong);
         compute_program->setUniformValue("transparent", transparent);
+        compute_program->setUniformValue("lightning", lightning);
         compute_program->setUniformValue("lightIntensity", lightIntensity);
         compute_program->setUniformValue("refractions", refractions);
         compute_program->setUniformValue("innerRadius", innerRadius);
@@ -1192,6 +1221,7 @@ void glShaderWindow::render()
     m_program->setUniformValue("lightIntensity", 1.0f);
     m_program->setUniformValue("blinnPhong", blinnPhong);
     m_program->setUniformValue("transparent", transparent);
+    m_program->setUniformValue("lightning", lightning);
     m_program->setUniformValue("lightIntensity", lightIntensity);
     m_program->setUniformValue("refractions", refractions);
     m_program->setUniformValue("innerRadius", innerRadius);
@@ -1223,6 +1253,7 @@ void glShaderWindow::render()
         ground_program->setUniformValue("lightIntensity", 1.0f);
         ground_program->setUniformValue("blinnPhong", blinnPhong);
         ground_program->setUniformValue("transparent", transparent);
+        ground_program->setUniformValue("lightning", lightning);
         ground_program->setUniformValue("lightIntensity", lightIntensity);
         ground_program->setUniformValue("refractions", refractions);
         ground_program->setUniformValue("innerRadius", innerRadius);
