@@ -361,8 +361,8 @@ void main(void) {
     // Step 2: ray direction:
     vec4 dir = normalize((mat_inverse * worldPos));
     vec4 eye = (mat_inverse * vec4(0, 0, 0, 1));
-    // vec4 color = trace(eye, dir);
-    vec4 color = traceRays(eye,dir);
+    vec4 color = trace(eye, dir);
+    // vec4 color = traceRays(eye,dir);
 
     imageStore(framebuffer, pix, color);
 }
