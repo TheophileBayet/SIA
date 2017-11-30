@@ -17,7 +17,7 @@ uniform float radius;
 uniform float groundDistance;
 uniform vec3 center;
 
-#define MAX_SCENE_BOUNDS 2
+#define MAX_SCENE_BOUNDS 3
 #define EPS                 0.000001
 
 
@@ -296,7 +296,7 @@ vec4 computeColor(in Pt_t tab[MAX_SCENE_BOUNDS]){
   vec4 color = vec4(0.7,0.7,0.7,1);
   while(tab[max_int].dir.x!=0){
     max_int +=1;
-    if(max_int=MAX_SCENE_BOUNDS) break;
+    if(max_int==MAX_SCENE_BOUNDS) break;
   }
   if(max_int>0){
     // max_int = 0 ssi il n'a avait aucun rebond de base
@@ -316,7 +316,7 @@ vec4 computeColor(in Pt_t tab[MAX_SCENE_BOUNDS]){
       // H = vec4(normalize(toLightSource-reflect(tab[max_int].dir,tab[max_int].normal).xyz),1);
       // cost = dot(H,vec4(toLightSource,1));
       // F = fresnel_coeff(cost);
-      color.xyz =0.5*max(0.05,(1/dist))* color.xyz + tab[max_int].color.xyz;
+      color.xyz =0.8*max(0.08,(1/dist))* color.xyz + tab[max_int].color.xyz;
       // if(tab[max_int].normal.y==1.0) color.xyz = tab[max_int].color.xyz;
       // color = vec4(1,0,0,1);
     }

@@ -87,7 +87,7 @@ void setupWindowMenu(QMenuBar* myMenuBar, glShaderWindow* glWindow)
     glWindow->connect(&sizeMapper, SIGNAL(mapped(const QString&)), glWindow, SLOT(setWindowSize(const QString&)));
 }
 
-void setupShaderMenu(QMenuBar* myMenuBar, glShaderWindow* glWindow) 
+void setupShaderMenu(QMenuBar* myMenuBar, glShaderWindow* glWindow)
 {
     // list of all shaders
     QMenu* shaderMenu = myMenuBar->addMenu(myMenuBar->tr("&Shaders"));

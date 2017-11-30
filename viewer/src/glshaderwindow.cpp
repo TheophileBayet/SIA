@@ -1031,7 +1031,9 @@ void glShaderWindow::mousePressEvent(QMouseEvent *e)
 {
     lastMousePosition = (2.0/m_screenSize) * (QVector2D(e->localPos()) - QVector2D(0.5 * width(), 0.5*height()));
     mouseToTrackball(lastMousePosition, lastTBPosition);
+    setShader("1_simple");
     mouseButton = e->button();
+
 }
 
 void glShaderWindow::wheelEvent(QWheelEvent * ev)
