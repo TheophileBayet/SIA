@@ -1099,6 +1099,7 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
 void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 {
     mouseButton = Qt::NoButton;
+    setShader("gpgpu_fullrt");
 }
 
 void glShaderWindow::timerEvent(QTimerEvent *e)
