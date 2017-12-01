@@ -1041,6 +1041,10 @@ void glShaderWindow::mousePressEvent(QMouseEvent *e)
 
 void glShaderWindow::wheelEvent(QWheelEvent * ev)
 {
+    if (isFullrt){
+        changeShader = true;
+        setShader("2_phong");
+    }
     int matrixMoving = 0;
     if (ev->modifiers() & Qt::ShiftModifier) matrixMoving = 1;
     else if (ev->modifiers() & Qt::AltModifier) matrixMoving = 2;
@@ -1056,6 +1060,10 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
         groundDistance += 0.1 * numDegrees.y();
     }
     renderNow();
+    if (changeShader){
+        setShader("gpgpu_fullrt");
+        changeShader = false;
+    }
 }
 
 void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
