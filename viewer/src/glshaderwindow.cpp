@@ -725,6 +725,7 @@ void glShaderWindow::setShader(const QString& shader)
     QString fragmentShader;
     QString computeShader;
     isGPGPU = shader.contains("gpgpu", Qt::CaseInsensitive);
+    isFullrt = shader.contains("fullrt", Qt::CaseInsensitive);
     foreach (const QString &str, shaders) {
         QString suffix = str.right(str.size() - str.lastIndexOf("."));
         if (m_vertShaderSuffix.filter(suffix).size() > 0) {
@@ -975,7 +976,7 @@ void glShaderWindow::resize(int x, int y)
 }
 
 QOpenGLShaderProgram* glShaderWindow::prepareShaderProgram(const QString& vertexShaderPath,
-                                           const QString& fragmentShaderPath)
+                               const QString& fragmentShaderPath)
 {
     QOpenGLShaderProgram* program = new QOpenGLShaderProgram(this);
     if (!program) qWarning() << "Failed to allocate the shader";
@@ -1031,9 +1032,11 @@ void glShaderWindow::mousePressEvent(QMouseEvent *e)
 {
     lastMousePosition = (2.0/m_screenSize) * (QVector2D(e->localPos()) - QVector2D(0.5 * width(), 0.5*height()));
     mouseToTrackball(lastMousePosition, lastTBPosition);
-    setShader("1_simple");
+    if (isFullrt){
+        changeShader = true;
+        setShader("2_phong");
+    }
     mouseButton = e->button();
-
 }
 
 void glShaderWindow::wheelEvent(QWheelEvent * ev)
@@ -1098,6 +1101,10 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
 
 void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 {
+    if (changeShader){
+        setShader("gpgpu_fullrt");
+        changeShader = false;
+    }
     mouseButton = Qt::NoButton;
 }
 

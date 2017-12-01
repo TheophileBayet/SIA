@@ -75,6 +75,10 @@ private:
 
     // Are we using GPGPU?
     bool isGPGPU;
+    // Do we change the shader?
+    bool changeShader;
+    // Are we using fullrt?
+    bool isFullrt;
     // Are we using compute shaders?
     bool hasComputeShaders;
     // Model we are displaying:
