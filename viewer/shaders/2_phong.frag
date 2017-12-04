@@ -14,7 +14,7 @@ in vec4 lightSpace;
 
 out vec4 fragColor;
 
-
+#define M_PI 3.1415926535897932384626433832795
 
 
 /*
@@ -43,7 +43,6 @@ vec4 diffuse(vec4 color,vec4 normal,vec4 LightVector, float kd, float I){
 /*
 * this function calculates the Fresnel coefficient
 */
-
 float fresnel_coeff(float eta, float cost){
   float ci = abs(eta*eta + 1 - cost*cost) ;
   ci = sqrt(ci);
@@ -55,9 +54,8 @@ float fresnel_coeff(float eta, float cost){
   denom = eta*eta*cost + ci;
   float Fp = abs(nume/denom);
   Fp = Fp * Fp;
-    return((Fs+Fp)/2);
-  }
-
+  return((Fs+Fp)/2);
+ }
 
 /*
 * this function calculates the specular component of the Blinn-Phong model for ligthing
@@ -71,6 +69,51 @@ vec4 specular_blinn(float eta, float cost, vec4 color, vec4 normal, vec4 H, floa
   return ( F*max* color *  I);
 }
 
+/*
+* this function calculates the D coefficient
+*/
+float compute_D(float alpha, float cost){
+    // 0 < theta < pi/2
+    if (cost > 0){ // NE COUVRE PAS ENCORE TOUS LES CAS BIEN!!!
+        float res = (alpha*alpha) / (M_PI * cost*cost*cost*cost);
+        float tant_square = 1/(cost*cost) - 1;
+        float denom = alpha*alpha + tant_square;
+        res = res / (denom*denom);
+        return res;
+    } else {
+        return 0;
+    }
+}
+
+/*
+* this function calculates the G1 coefficient
+*/
+float compute_G1(float alpha, float cost){
+    float tant_square = 1/(cost*cost) - 1;
+    float denom = 1 + alpha*alpha + tant_square;
+    denom = 1 + sqrt(denom);
+    return 2/denom;
+}
+
+/*
+* this function calculates the specular component of the Cook-Torrance model for ligthing
+*/
+vec4 specular_cook(float eta, float alpha, float cost, vec4 color, vec4 normal, vec4 light, vec4 eye, vec4 H, float I){
+    float cosThetaI = dot(light,normal);
+    float cosThetaO = dot(eye,normal);
+    float F = fresnel_coeff(eta,cost);
+    float D = compute_D(alpha,cost);
+    float Gi = compute_G1(alpha,cosThetaI);
+    float Go = compute_G1(alpha,cosThetaO);
+    float coef = (F*D*Gi*Go) / (4*cosThetaI*cosThetaO);
+
+    // float max = max_scalar_zero(normal,H);
+    // max = pow(max,s);
+
+    return coef * color * I;
+    // return coef * color * max * I;
+}
+
 
 void main( void )
 {
@@ -82,6 +125,7 @@ void main( void )
     vec4 lightVectorNorm = normalize(lightVector);
     float ka = 0.5;
     float kd = 0.5;
+    float alpha = 0.1;
     vec4 H = normalize(eyeVectorNorm +lightVectorNorm);
     float cos_theta_d = dot(H,lightVectorNorm);
 
@@ -96,19 +140,11 @@ void main( void )
     // Specular Lighting
     vec4 Cs = vec4(0,0,0,0);
     if (blinnPhong){
-      // Blinn-Phong Model
-      Cs  = specular_blinn(eta,cos_theta_d,vertColor,vertNormal,H,shininess,lightIntensity);
-
-      // Résultat des tests :
-      // - Retirer F : noir tout le temps sauf blinn-Phong à 0
-      // - Retirer max : noir tout le temps
-      // - Retirer F et max : pas noir
-      // Conclusion : les vecteurs sont mauvais ?
-
-
-     }else{
-      // Cook-Torrance Model
-
+        // Blinn-Phong Model
+        Cs  = specular_blinn(eta,cos_theta_d,vertColor,vertNormal,H,shininess,lightIntensity);
+    }else{
+        // Cook-Torrance Model
+        Cs = specular_cook(eta,alpha,cos_theta_d,vertColor,vertNormal,lightVectorNorm,eyeVectorNorm,H,lightIntensity);
      }
      fragColor = Ca +Cd +Cs ;
 }
