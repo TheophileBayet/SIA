@@ -49,7 +49,8 @@ public slots:
     void indirectClicked();
     void updateLightIntensity(int lightSliderValue);
     void updateShininess(int shininessSliderValue);
-    void updateEta(int etaSliderValue);
+    void updateEtaReal(int etaSliderValue);
+    void updateEtaImaginary(int etaSliderValue);
     void updateRefractions(int refractionsSliderValue);
     void updateInnerRadius(int innerRadiusSliderValue);
 
@@ -112,7 +113,7 @@ private:
     bool lightning;
     int refractions;
     float innerRadius;
-    float eta;
+    QVector2D eta;
     float lightIntensity;
     float shininess;
     float lightDistance;

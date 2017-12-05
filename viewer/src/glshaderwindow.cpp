@@ -26,7 +26,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
-      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true), eta(1.5), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
+      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true), eta(QVector2D(1.5,0)), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false),
       m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
@@ -231,9 +231,15 @@ void glShaderWindow::updateShininess(int shininessSliderValue)
     renderNow();
 }
 
-void glShaderWindow::updateEta(int etaSliderValue)
+void glShaderWindow::updateEtaReal(int etaSliderValue)
 {
-    eta = etaSliderValue/100.0;
+    eta.setX(etaSliderValue/100.0);
+    renderNow();
+}
+
+void glShaderWindow::updateEtaImaginary(int etaSliderValue)
+{
+    eta.setY(etaSliderValue/100.0);
     renderNow();
 }
 
@@ -358,23 +364,41 @@ QWidget *glShaderWindow::makeAuxWindow()
     outer->addLayout(hboxShininess);
     outer->addWidget(shininessSlider);
 
-    // Eta slider
-    QSlider* etaSlider = new QSlider(Qt::Horizontal);
-    etaSlider->setTickPosition(QSlider::TicksBelow);
-    etaSlider->setTickInterval(100);
-    etaSlider->setMinimum(0);
-    etaSlider->setMaximum(500);
-    etaSlider->setSliderPosition(eta*100);
-    connect(etaSlider,SIGNAL(valueChanged(int)),this,SLOT(updateEta(int)));
-    QLabel* etaLabel = new QLabel("Eta (index of refraction) * 100 =");
-    QLabel* etaLabelValue = new QLabel();
-    etaLabelValue->setNum(eta * 100);
-    connect(etaSlider,SIGNAL(valueChanged(int)),etaLabelValue,SLOT(setNum(int)));
-    QHBoxLayout *hboxEta= new QHBoxLayout;
-    hboxEta->addWidget(etaLabel);
-    hboxEta->addWidget(etaLabelValue);
-    outer->addLayout(hboxEta);
-    outer->addWidget(etaSlider);
+    // Real part of eta slider
+    QSlider* etaSliderReal = new QSlider(Qt::Horizontal);
+    etaSliderReal->setTickPosition(QSlider::TicksBelow);
+    etaSliderReal->setTickInterval(100);
+    etaSliderReal->setMinimum(0);
+    etaSliderReal->setMaximum(500);
+    etaSliderReal->setSliderPosition(eta.x()*100);
+    connect(etaSliderReal,SIGNAL(valueChanged(int)),this,SLOT(updateEtaReal(int)));
+    QLabel* etaLabelReal = new QLabel("Real part of eta (index of refraction) * 100 =");
+    QLabel* etaLabelValueReal = new QLabel();
+    etaLabelValueReal->setNum(eta.x() * 100);
+    connect(etaSliderReal,SIGNAL(valueChanged(int)),etaLabelValueReal,SLOT(setNum(int)));
+    QHBoxLayout *hboxEtaReal= new QHBoxLayout;
+    hboxEtaReal->addWidget(etaLabelReal);
+    hboxEtaReal->addWidget(etaLabelValueReal);
+    outer->addLayout(hboxEtaReal);
+    outer->addWidget(etaSliderReal);
+
+    // Imaginary part of eta slider
+    QSlider* etaSliderI = new QSlider(Qt::Horizontal);
+    etaSliderI->setTickPosition(QSlider::TicksBelow);
+    etaSliderI->setTickInterval(100);
+    etaSliderI->setMinimum(0);
+    etaSliderI->setMaximum(500);
+    etaSliderI->setSliderPosition(eta.y()*100);
+    connect(etaSliderI,SIGNAL(valueChanged(int)),this,SLOT(updateEtaImaginary(int)));
+    QLabel* etaLabelI = new QLabel("Imaginary part of eta (index of refraction) * 100 =");
+    QLabel* etaLabelValueI = new QLabel();
+    etaLabelValueI->setNum(eta.y() * 100);
+    connect(etaSliderI,SIGNAL(valueChanged(int)),etaLabelValueI,SLOT(setNum(int)));
+    QHBoxLayout *hboxEtaI= new QHBoxLayout;
+    hboxEtaI->addWidget(etaLabelI);
+    hboxEtaI->addWidget(etaLabelValueI);
+    outer->addLayout(hboxEtaI);
+    outer->addWidget(etaSliderI);
 
     auxWidget->setLayout(outer);
     return auxWidget;
@@ -1176,6 +1200,7 @@ void glShaderWindow::render()
         compute_program->setUniformValue("innerRadius", innerRadius);
         compute_program->setUniformValue("shininess", shininess);
         compute_program->setUniformValue("eta", eta);
+        // compute_program->setUniformValue("eta.y", eta.y);
         compute_program->setUniformValue("framebuffer", 2);
         compute_program->setUniformValue("colorTexture", 0);
 		glBindImageTexture(2, computeResult->textureId(), 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
@@ -1244,6 +1269,7 @@ void glShaderWindow::render()
     m_program->setUniformValue("innerRadius", innerRadius);
     m_program->setUniformValue("shininess", shininess);
     m_program->setUniformValue("eta", eta);
+    // m_program->setUniformValue("eta.y", eta.y);
     m_program->setUniformValue("radius", modelMesh->bsphere.r);
 	if (m_program->uniformLocation("colorTexture") != -1) m_program->setUniformValue("colorTexture", 0);
     if (m_program->uniformLocation("envMap") != -1)  m_program->setUniformValue("envMap", 1);
@@ -1276,6 +1302,7 @@ void glShaderWindow::render()
         ground_program->setUniformValue("innerRadius", innerRadius);
         ground_program->setUniformValue("shininess", shininess);
         ground_program->setUniformValue("eta", eta);
+        // ground_program->setUniformValue("eta.y", eta.y);
         ground_program->setUniformValue("radius", modelMesh->bsphere.r);
 		if (ground_program->uniformLocation("colorTexture") != -1) ground_program->setUniformValue("colorTexture", 0);
         if (ground_program->uniformLocation("shadowMap") != -1) {

@@ -3,7 +3,7 @@
 uniform float lightIntensity;
 uniform bool blinnPhong;
 uniform float shininess;
-uniform float eta;
+uniform vec2 eta;
 uniform sampler2D shadowMap;
 
 in vec4 eyeVector;
@@ -43,24 +43,53 @@ vec4 diffuse(vec4 color,vec4 normal,vec4 LightVector, float kd, float I){
 /*
 * this function calculates the Fresnel coefficient
 */
-float fresnel_coeff(float eta, float cost){
-  float ci = abs(eta*eta + 1 - cost*cost) ;
-  ci = sqrt(ci);
-  float nume = cost - ci;
-  float denom = cost + ci;
-  float Fs = abs(nume/denom);
+float fresnel_coeff(vec2 eta, float cost){
+  vec2 eta2 = vec2(eta.x*eta.x - eta.y*eta.y, 2*eta.x*eta.y);
+  vec2 tmp = eta2 + 1 - cost*cost;
+  float x_ci = sqrt((tmp.x+sqrt(tmp.x*tmp.x+tmp.y+tmp.y))/2);
+  float y_ci = tmp.y / (2*x_ci);
+  vec2 ci = vec2(x_ci,y_ci);
+  vec2 nume = cost - ci;
+  vec2 denom = cost + ci;
+  float Fs = abs(denom.x*denom.x + denom.y*denom.y);
   Fs = Fs*Fs;
-  nume = eta*eta*cost - ci;
-  denom = eta*eta*cost + ci;
-  float Fp = abs(nume/denom);
-  Fp = Fp * Fp;
+  Fs = 1/Fs;
+  float coef = nume.x*nume.x*denom.x*denom.x;
+  coef += nume.y*nume.y*denom.y*denom.y;
+  coef += nume.y*nume.y*denom.x*denom.x;
+  coef += nume.x*nume.x*denom.y*denom.y;
+  Fs = Fs * coef;
+  nume = eta2*cost - ci;
+  denom = eta2*cost + ci;
+  float Fp = abs(denom.x*denom.x + denom.y*denom.y);
+  Fp = Fp*Fp;
+  Fp = 1/Fp;
+  coef = nume.x*nume.x*denom.x*denom.x;
+  coef += nume.y*nume.y*denom.y*denom.y;
+  coef += nume.y*nume.y*denom.x*denom.x;
+  coef += nume.x*nume.x*denom.y*denom.y;
+  Fp = Fp * coef;
   return((Fs+Fp)/2);
  }
+
+ // float fresnel_coeff(float eta, float cost){
+ //     float ci = abs(eta*eta + 1 - cost*cost) ;
+ //     ci = sqrt(ci);
+ //     float nume = cost - ci;
+ //     float denom = cost + ci;
+ //     float Fs = abs(nume/denom);
+ //     Fs = Fs*Fs;
+ //     nume = eta*eta*cost - ci;
+ //     denom = eta*eta*cost + ci;
+ //     float Fp = abs(nume/denom);
+ //     Fp = Fp * Fp;
+ //     return((Fs+Fp)/2);
+ //  }
 
 /*
 * this function calculates the specular component of the Blinn-Phong model for ligthing
 */
-vec4 specular_blinn(float eta, float cost, vec4 color, vec4 normal, vec4 H, float s, float I){
+vec4 specular_blinn(vec2 eta, float cost, vec4 color, vec4 normal, vec4 H, float s, float I){
   float F = fresnel_coeff(eta,cost);
   float max = max_scalar_zero(normal,H);
   max = pow(max,s);
@@ -98,7 +127,7 @@ float compute_G1(float alpha, float cost){
 /*
 * this function calculates the specular component of the Cook-Torrance model for ligthing
 */
-vec4 specular_cook(float eta, float alpha, float cost, vec4 color, vec4 normal, vec4 light, vec4 eye, vec4 H, float I){
+vec4 specular_cook(vec2 eta, float alpha, float cost, vec4 color, vec4 normal, vec4 light, vec4 eye, vec4 H, float I){
     float cosThetaI = dot(light,normal);
     float cosThetaO = dot(eye,normal);
     float F = fresnel_coeff(eta,cost);
