@@ -191,6 +191,7 @@ void glShaderWindow::transparentClicked()
 
 void glShaderWindow::bubbleClicked(){
   bubble = true;
+  transparent = true;
   renderNow();
 }
 
