@@ -9,7 +9,7 @@ uniform float radius;
 
 uniform bool transparent;
 uniform float shininess;
-uniform float eta;
+uniform vec2 eta;
 uniform int refractions;
 uniform float innerRadius;
 in vec4 position;
@@ -40,6 +40,35 @@ float fresnel_coeff(float eta, float cost){
   return((Fs+Fp)/2);
   }
 
+  // float fresnel_coeff(vec2 eta, float cost){
+  //   vec2 eta2 = vec2(eta.x*eta.x - eta.y*eta.y, 2*eta.x*eta.y);
+  //   vec2 tmp = eta2 + 1 - cost*cost;
+  //   float x_ci = sqrt((tmp.x+sqrt(tmp.x*tmp.x+tmp.y+tmp.y))/2);
+  //   float y_ci = tmp.y / (2*x_ci);
+  //   vec2 ci = vec2(x_ci,y_ci);
+  //   vec2 nume = cost - ci;
+  //   vec2 denom = cost + ci;
+  //   float Fs = abs(denom.x*denom.x + denom.y*denom.y);
+  //   Fs = Fs*Fs;
+  //   Fs = 1/Fs;
+  //   float coef = nume.x*nume.x*denom.x*denom.x;
+  //   coef += nume.y*nume.y*denom.y*denom.y;
+  //   coef += nume.y*nume.y*denom.x*denom.x;
+  //   coef += nume.x*nume.x*denom.y*denom.y;
+  //   Fs = Fs * coef;
+  //   nume = eta2*cost - ci;
+  //   denom = eta2*cost + ci;
+  //   float Fp = abs(denom.x*denom.x + denom.y*denom.y);
+  //   Fp = Fp*Fp;
+  //   Fp = 1/Fp;
+  //   coef = nume.x*nume.x*denom.x*denom.x;
+  //   coef += nume.y*nume.y*denom.y*denom.y;
+  //   coef += nume.y*nume.y*denom.x*denom.x;
+  //   coef += nume.x*nume.x*denom.y*denom.y;
+  //   Fp = Fp * coef;
+  //   return((Fs+Fp)/2);
+  //  }
+
 
 bool raySphereIntersect(in vec3 start, in vec3 direction,in float radius, out vec3 newPoint) {
     vec3 pc = center - start;
@@ -64,7 +93,7 @@ void computeRays(in vec3 pointInter,in out vec3 normal,in out vec3 reflected,in 
   normal = normalize(center-pointInter);
   reflected = reflect(direction,normal);
   reflected= normalize(reflected);
-  refracted = refract (direction,normal,eta);
+  refracted = refract (direction,normal,eta.x);
   refracted = normalize(refracted);
 }
 
@@ -72,7 +101,7 @@ void computeRaysBubble(in vec3 pointInter,in out vec3 normal,in out vec3 reflect
   normal = normalize(pointInter-center);
   reflected = reflect(direction,normal);
   reflected= normalize(reflected);
-  refracted = refract (direction,normal,eta);
+  refracted = refract (direction,normal,eta.x);
   refracted = normalize(refracted);
 }
 
@@ -86,7 +115,7 @@ float computeFresnel(in vec3 reflected, in vec3 normal,in float eta){
 }
 
 void computeRefractions(in vec3 pointInter,in vec3 normal,in vec3 reflected,in out vec3 refracted){
-  float F = computeFresnel(reflected,normal,eta);
+  float F = computeFresnel(reflected,normal,eta.x);
   float coeff = (1-F);
   fragColor = F *getColorFromEnvironment(reflected);
   vec3 direction = normalize(refracted);
@@ -95,7 +124,7 @@ void computeRefractions(in vec3 pointInter,in vec3 normal,in vec3 reflected,in o
     pointInter += 0.001*direction ;
     bool inter = raySphereIntersect(pointInter,direction,radius,pointInter);
     computeRays(pointInter,normal,reflected,refracted,direction);
-    F =computeFresnel(reflected,normal,1/eta);
+    F =computeFresnel(reflected,normal,1/eta.x);
     if(getColorFromEnvironment(refracted).x>0){
     fragColor += coeff*(1-F)*getColorFromEnvironment(refracted);}
     coeff *= F ;
@@ -106,7 +135,7 @@ void computeRefractions(in vec3 pointInter,in vec3 normal,in vec3 reflected,in o
 
 void computeExtBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 refracted,in float coeff, in int ite){
   // Interface air->verre
-  float F = computeFresnel(reflected,normal,eta);
+  float F = computeFresnel(reflected,normal,eta.x);
   coeff = coeff*(1-F);
   vec3 direction = refracted;
     pointInter += 0.001*direction ;
@@ -114,7 +143,7 @@ void computeExtBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in ve
     bool inter = raySphereIntersect(pointInter,direction,radius,pointInter);
     computeRays(pointInter,normal,reflected,refracted,direction);
     // Calcul de Frenel avec interface verre-> air
-    F =computeFresnel(reflected,normal,1/eta);
+    F =computeFresnel(reflected,normal,1/eta.x);
     // ##################    SORTIE RAYON 5    ###################
     if(getColorFromEnvironment(refracted).x>0){
       fragColor += coeff*(1-F)*getColorFromEnvironment(refracted);
@@ -174,8 +203,8 @@ void computeIntBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in ve
     inter = raySphereIntersect(pointInter,direction,radius*innerRadius,pointInter);
     computeRays(pointInter,normal,reflected,refracted,direction);
     // interface air-> verre
-    refracted=refract(direction,normal,1/eta);
-    F =computeFresnel(reflected,normal,eta);
+    refracted=refract(direction,normal,1/eta.x);
+    F =computeFresnel(reflected,normal,eta.x);
     // ###########    Vers le calcul du RAYON 4 #########
     computeExtBubbles(pointInter,normal,reflected,refracted,coeff*(1-F),i);
     coeff *= F ;
@@ -188,7 +217,7 @@ void computeIntBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in ve
 void computeBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 refracted,in float coeff,in int ite){
   bool toBubbleInt = true;
   // Interface air->Verre
-  float F = computeFresnel(reflected,normal,eta);
+  float F = computeFresnel(reflected,normal,eta.x);
   coeff = coeff*(1-F);
   bool inter ;
   vec3 direction = refracted;
@@ -218,7 +247,7 @@ void computeBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 
       computeRays(pointInter,normal,reflected,refracted,direction); // calcul du point d'inter avec la norm. bien orientée.
     }
     // Calcul de Frenel avec interface verre-> air
-    F =computeFresnel(reflected,normal,1/eta);
+    F =computeFresnel(reflected,normal,1/eta.x);
     // On ne fait ressortir que si on est vers la bulle ext.
     if(!(toBubbleInt)){
       // ##################    SORTIE RAYON 2     ###################
@@ -263,7 +292,7 @@ void main(void)
       vec3 reflected = reflect(u,normal);
       reflected= normalize(reflected);
       // Interface air -> verre
-      vec3 refracted = refract (u,normal,1/eta);
+      vec3 refracted = refract (u,normal,1/eta.x);
       refracted = normalize(refracted);
 
       if(transparent){
