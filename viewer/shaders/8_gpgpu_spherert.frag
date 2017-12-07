@@ -40,36 +40,6 @@ float fresnel_coeff(float eta, float cost){
   return((Fs+Fp)/2);
   }
 
-  // float fresnel_coeff(vec2 eta, float cost){
-  //   vec2 eta2 = vec2(eta.x*eta.x - eta.y*eta.y, 2*eta.x*eta.y);
-  //   vec2 tmp = eta2 + 1 - cost*cost;
-  //   float x_ci = sqrt((tmp.x+sqrt(tmp.x*tmp.x+tmp.y+tmp.y))/2);
-  //   float y_ci = tmp.y / (2*x_ci);
-  //   vec2 ci = vec2(x_ci,y_ci);
-  //   vec2 nume = cost - ci;
-  //   vec2 denom = cost + ci;
-  //   float Fs = abs(denom.x*denom.x + denom.y*denom.y);
-  //   Fs = Fs*Fs;
-  //   Fs = 1/Fs;
-  //   float coef = nume.x*nume.x*denom.x*denom.x;
-  //   coef += nume.y*nume.y*denom.y*denom.y;
-  //   coef += nume.y*nume.y*denom.x*denom.x;
-  //   coef += nume.x*nume.x*denom.y*denom.y;
-  //   Fs = Fs * coef;
-  //   nume = eta2*cost - ci;
-  //   denom = eta2*cost + ci;
-  //   float Fp = abs(denom.x*denom.x + denom.y*denom.y);
-  //   Fp = Fp*Fp;
-  //   Fp = 1/Fp;
-  //   coef = nume.x*nume.x*denom.x*denom.x;
-  //   coef += nume.y*nume.y*denom.y*denom.y;
-  //   coef += nume.y*nume.y*denom.x*denom.x;
-  //   coef += nume.x*nume.x*denom.y*denom.y;
-  //   Fp = Fp * coef;
-  //   return((Fs+Fp)/2);
-  //  }
-
-
 bool raySphereIntersect(in vec3 start, in vec3 direction,in float radius, out vec3 newPoint) {
     vec3 pc = center - start;
     float r = radius ;
