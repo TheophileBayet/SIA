@@ -96,32 +96,30 @@ vec4 diffuse(vec4 color,vec4 normal,vec4 LightVector, float kd){
 //  }
 
 float fresnel_coeff(float cost){
-  vec2 eta2 = vec2(eta.x*eta.x - eta.y*eta.y, 2*eta.x*eta.y);
-  vec2 tmp = eta2 + 1 - cost*cost;
-  float x_ci = sqrt((tmp.x+sqrt(tmp.x*tmp.x+tmp.y+tmp.y))/2);
-  float y_ci = tmp.y / (2*x_ci);
-  vec2 ci = vec2(x_ci,y_ci);
-  vec2 nume = cost - ci;
-  vec2 denom = cost + ci;
-  float Fs = abs(denom.x*denom.x + denom.y*denom.y);
-  Fs = Fs*Fs;
-  Fs = 1/Fs;
-  float coef = nume.x*nume.x*denom.x*denom.x;
-  coef += nume.y*nume.y*denom.y*denom.y;
-  coef += nume.y*nume.y*denom.x*denom.x;
-  coef += nume.x*nume.x*denom.y*denom.y;
-  Fs = Fs * coef;
-  nume = eta2*cost - ci;
-  denom = eta2*cost + ci;
-  float Fp = abs(denom.x*denom.x + denom.y*denom.y);
-  Fp = Fp*Fp;
-  Fp = 1/Fp;
-  coef = nume.x*nume.x*denom.x*denom.x;
-  coef += nume.y*nume.y*denom.y*denom.y;
-  coef += nume.y*nume.y*denom.x*denom.x;
-  coef += nume.x*nume.x*denom.y*denom.y;
-  Fp = Fp * coef;
-  return((Fs+Fp)/2);
+    // Computation of ci
+    vec2 eta2 = vec2(eta.x*eta.x - eta.y*eta.y, 2*eta.x*eta.y);
+    vec2 tmp = eta2 + 1 - cost*cost;
+    // Square root of a complex number
+    float x_ci = ( tmp.x + sqrt(tmp.x*tmp.x + tmp.y+tmp.y) ) / 2;
+    x_ci = sqrt(x_ci);
+    float y_ci = sqrt(tmp.x*tmp.x + tmp.y+tmp.y) - x_ci*x_ci;
+    y_ci = sqrt(y_ci);
+    vec2 ci = vec2(x_ci,y_ci);
+    // Computation of Fs
+    vec2 num = cost - ci;
+    vec2 denom = cost + ci;
+    float tmp1 = num.x*num.x + num.y*num.y;
+    float tmp2 = denom.x*denom.x + denom.y*denom.y;
+    if (tmp2 == 0) return 0;
+    float Fs = tmp1/tmp2;
+    // Computation of Fp
+    num = eta2*cost - ci;
+    denom = eta2*cost + ci;
+    tmp1 = num.x*num.x + num.y*num.y;
+    tmp2 = denom.x*denom.x + denom.y*denom.y;
+    if (tmp2 == 0) return 0;
+    float Fp = tmp1/tmp2;
+    return((Fs+Fp)/2);
  }
 
 /*
