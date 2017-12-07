@@ -83,10 +83,10 @@ protected:
 private:
     bool m_update_pending;
     bool m_animating;
+    int  m_rendering;
 
     QOpenGLContext *m_context;
     QOpenGLPaintDevice *m_device;
 
 };
 //! [1]
-

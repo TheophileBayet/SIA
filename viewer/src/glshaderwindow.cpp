@@ -26,8 +26,8 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
-      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true), eta(QVector2D(1.5,0)), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
-      shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false),
+      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true), eta(1.5), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
+      shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0),animating(false),animation_time(0), fullScreenSnapshots(false),
       m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
     // Default values you might want to tinker with
@@ -243,6 +243,12 @@ void glShaderWindow::updateEtaImaginary(int etaSliderValue)
     renderNow();
 }
 
+void glShaderWindow::updateAnimating()
+{
+  animating = !animating;
+  setAnimating(animating);
+}
+
 QWidget *glShaderWindow::makeAuxWindow()
 {
     if (auxWidget)
@@ -302,7 +308,7 @@ QWidget *glShaderWindow::makeAuxWindow()
     refractionsSlider->setMaximum(10);
     refractionsSlider->setSliderPosition(refractions);
     connect(refractionsSlider,SIGNAL(valueChanged(int)),this,SLOT(updateRefractions(int)));
-    QLabel* refractionsLabel = new QLabel("Number of refractions  = ");
+    QLabel* refractionsLabel = new QLabel("Number of refractions / bounces = ");
     QLabel* refractionsLabelValue = new QLabel();
     refractionsLabelValue->setNum(refractions);
     connect(refractionsSlider,SIGNAL(valueChanged(int)),refractionsLabelValue,SLOT(setNum(int)));
@@ -740,8 +746,8 @@ void glShaderWindow::setWindowSize(const QString& size)
 
 void glShaderWindow::setShader(const QString& shader)
 {
-    // Prepare a complete shader program...
-	QString shaderPath = workingDirectory + "../shaders/";
+    // Prepare a complete shader program...$
+	  QString shaderPath = workingDirectory + "../shaders/";
     QDir shadersDir = QDir(shaderPath);
     QString shader2 = shader + "*";
     QStringList shaders = shadersDir.entryList(QStringList(shader2));
@@ -775,6 +781,7 @@ void glShaderWindow::setShader(const QString& shader)
     }
     bindSceneToProgram();
     loadTexturesForShaders();
+    if(animating && isFullrt ) animation_time = (animation_time-1)%4;
     renderNow();
 }
 
@@ -1059,6 +1066,8 @@ void glShaderWindow::mousePressEvent(QMouseEvent *e)
     if (isFullrt){
         changeShader = true;
         setShader("2_phong");
+        animating = true;
+        // updateAnimating();
     }
     mouseButton = e->button();
 }
@@ -1068,6 +1077,8 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
     if (isFullrt){
         changeShader = true;
         setShader("2_phong");
+        usedWheel=true;
+        // setAnimating(true);
     }
     int matrixMoving = 0;
     if (ev->modifiers() & Qt::ShiftModifier) matrixMoving = 1;
@@ -1084,14 +1095,20 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
         groundDistance += 0.1 * numDegrees.y();
     }
     renderNow();
-    if (changeShader){
-        setShader("gpgpu_fullrt");
-        changeShader = false;
-    }
+    // if (changeShader){
+    //     setShader("gpgpu_fullrt");
+    //     changeShader = false;
+    // }
 }
 
 void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
 {
+    if (changeShader && usedWheel){
+        changeShader = false;
+        setShader("gpgpu_fullrt");
+        usedWheel = false;
+        // setAnimating(false);
+    }
     if (mouseButton == Qt::NoButton) return;
     QVector2D mousePosition = (2.0/m_screenSize) * (QVector2D(e->localPos()) - QVector2D(0.5 * width(), 0.5*height()));
     QVector3D currTBPosition;
@@ -1134,8 +1151,34 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
 void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 {
     if (changeShader){
+        // animating = true;
+        // animation_time = 0;
         setShader("gpgpu_fullrt");
+        // animating = false ;
         changeShader = false;
+        animating = false;
+        // updateAnimating();
+        // setShader("gpgpu_fullrt");
+        // animating = true;
+        // animation_time= 0;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 1;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 2 ;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 3 ;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 0;
+        // animating = false;
+        // updateAnimating();
+        // animation_time = 1;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 2 ;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 3 ;
+        // setShader("gpgpu_fullrt");
+        // animation_time = 0;
+        // setAnimating(true);
     }
     mouseButton = Qt::NoButton;
 }
@@ -1195,6 +1238,8 @@ void glShaderWindow::render()
         compute_program->setUniformValue("blinnPhong", blinnPhong);
         compute_program->setUniformValue("transparent", transparent);
         compute_program->setUniformValue("lightning", lightning);
+        compute_program->setUniformValue("animating",animating);
+        compute_program->setUniformValue("animation_time",animation_time);
         compute_program->setUniformValue("lightIntensity", lightIntensity);
         compute_program->setUniformValue("refractions", refractions);
         compute_program->setUniformValue("innerRadius", innerRadius);
@@ -1264,6 +1309,8 @@ void glShaderWindow::render()
     m_program->setUniformValue("blinnPhong", blinnPhong);
     m_program->setUniformValue("transparent", transparent);
     m_program->setUniformValue("lightning", lightning);
+    m_program->setUniformValue("animating", animating);
+    m_program->setUniformValue("animation_time", animation_time);
     m_program->setUniformValue("lightIntensity", lightIntensity);
     m_program->setUniformValue("refractions", refractions);
     m_program->setUniformValue("innerRadius", innerRadius);
@@ -1297,6 +1344,8 @@ void glShaderWindow::render()
         ground_program->setUniformValue("blinnPhong", blinnPhong);
         ground_program->setUniformValue("transparent", transparent);
         ground_program->setUniformValue("lightning", lightning);
+        ground_program->setUniformValue("animating", animating);
+        ground_program->setUniformValue("animation_time", animation_time);
         ground_program->setUniformValue("lightIntensity", lightIntensity);
         ground_program->setUniformValue("refractions", refractions);
         ground_program->setUniformValue("innerRadius", innerRadius);
