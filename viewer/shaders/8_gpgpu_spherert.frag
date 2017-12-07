@@ -9,6 +9,7 @@ uniform float radius;
 
 uniform bool transparent;
 uniform float shininess;
+uniform bool bubble;
 uniform vec2 eta;
 uniform int refractions;
 uniform float innerRadius;
@@ -16,6 +17,9 @@ in vec4 position;
 
 out vec4 fragColor;
 
+/*
+* This function returns the color of the environmentMap in the direction given in parameter
+*/
 vec4 getColorFromEnvironment(in vec3 direction)
 {
     float phi = acos(-direction.y);
@@ -25,7 +29,9 @@ vec4 getColorFromEnvironment(in vec3 direction)
     return texture2D(envMap,vec2(theta,phi));
 }
 
-
+/*
+* This function calculates the Fresnel coefficient
+*/
 float fresnel_coeff(float eta, float cost){
   float ci = abs(eta*eta + 1 - cost*cost) ;
   ci = sqrt(ci);
@@ -68,8 +74,11 @@ float fresnel_coeff(float eta, float cost){
   //   Fp = Fp * coef;
   //   return((Fs+Fp)/2);
   //  }
-
-
+/*
+* This function returns a boolean meaning wheter or not there is an intersection between the
+* ligne defined by poitn start and vector direction, and the sphere defined by center and radius.
+* If there is an intersection, the coords of the intersection are stocked in newPoint.
+*/
 bool raySphereIntersect(in vec3 start, in vec3 direction,in float radius, out vec3 newPoint) {
     vec3 pc = center - start;
     float r = radius ;
@@ -89,6 +98,10 @@ bool raySphereIntersect(in vec3 start, in vec3 direction,in float radius, out ve
     return false;
 }
 
+/*
+* this function compute the normal, the reflected and the refracted ray when the normal is
+* toward the outside of the bubbles
+*/
 void computeRays(in vec3 pointInter,in out vec3 normal,in out vec3 reflected,in out vec3 refracted,in vec3 direction){
   normal = normalize(center-pointInter);
   reflected = reflect(direction,normal);
@@ -97,6 +110,10 @@ void computeRays(in vec3 pointInter,in out vec3 normal,in out vec3 reflected,in 
   refracted = normalize(refracted);
 }
 
+/*
+* this function compute the normal, the reflected and the refracted ray when the normal is
+* toward the inside of the bubbles
+*/
 void computeRaysBubble(in vec3 pointInter,in out vec3 normal,in out vec3 reflected,in out vec3 refracted,in vec3 direction){
   normal = normalize(pointInter-center);
   reflected = reflect(direction,normal);
@@ -105,7 +122,9 @@ void computeRaysBubble(in vec3 pointInter,in out vec3 normal,in out vec3 reflect
   refracted = normalize(refracted);
 }
 
-
+/*
+* This function returns the fresnel coefficient
+*/
 float computeFresnel(in vec3 reflected, in vec3 normal,in float eta){
   float cos_theta_d = dot(reflected,normal);
   float F = fresnel_coeff(eta,cos_theta_d);
@@ -114,6 +133,9 @@ float computeFresnel(in vec3 reflected, in vec3 normal,in float eta){
   return F ;
 }
 
+/*
+* this function computes the color of thez pixel when it's inside a single sphere
+*/
 void computeRefractions(in vec3 pointInter,in vec3 normal,in vec3 reflected,in out vec3 refracted){
   float F = computeFresnel(reflected,normal,eta.x);
   float coeff = (1-F);
@@ -132,7 +154,9 @@ void computeRefractions(in vec3 pointInter,in vec3 normal,in vec3 reflected,in o
   }
 }
 
-
+/*
+* This function computes the refractions of the rays between the two spheres when it's already been inside the two.
+*/
 void computeExtBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 refracted,in float coeff, in int ite){
   // Interface air->verre
   float F = computeFresnel(reflected,normal,eta.x);
@@ -194,6 +218,9 @@ void computeExtBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in ve
 //    }
 // }
 
+/*
+* This function computes the refractions of the ray inside the second sphere of the bubble
+*/
 void computeIntBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 refracted,in float coeff,in int ite){
   bool inter ;
   vec3 direction = refracted;
@@ -213,8 +240,11 @@ void computeIntBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in ve
   }
 }
 
-
+/*
+* this function computes the refractions of the rays when they enter the bubbles
+*/
 void computeBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 refracted,in float coeff,in int ite){
+  // Direction du vecteur
   bool toBubbleInt = true;
   // Interface air->Verre
   float F = computeFresnel(reflected,normal,eta.x);
@@ -268,7 +298,9 @@ void computeBubbles(in vec3 pointInter,in vec3 normal,in vec3 reflected,in vec3 
 }
 
 
-
+/*
+* main puts the good value in fragcolor
+*/
 void main(void)
 {
     // Step 1: I need pixel coordinates. Division by w?
@@ -296,9 +328,14 @@ void main(void)
       refracted = normalize(refracted);
 
       if(transparent){
-        // Modèle Sphere :
-        // computeRefractions(pointInter,normal,reflected,refracted);
-        computeBubbles(pointInter,normal,reflected,refracted,1.0,0);
+        if(bubble){
+          // Modèle Bulles :
+          computeBubbles(pointInter,normal,reflected,refracted,1.0,0);
+        }else{
+          // Modèle Sphere :
+          computeRefractions(pointInter,normal,reflected,refracted);
+        }
+
       } else {
         fragColor = getColorFromEnvironment(reflected) ;
       }

@@ -143,9 +143,12 @@ vec4 specular_cook(vec2 eta, float alpha, float cost, vec4 color, vec4 normal, v
     // return coef * color * max * I;
 }
 
-
+/*
+main puts the good value in fragColor
+*/
 void main( void )
 {
+    vec4 vertNorm = normalize(vertNormal);
     // récupération de la couleur locale
     fragColor = vertColor;
 
@@ -163,17 +166,17 @@ void main( void )
 
 
     // Diffuse Lightning
-    vec4 Cd = diffuse(vertColor,vertNormal,lightVector,kd,lightIntensity);
+    vec4 Cd = diffuse(vertColor,vertNorm,lightVector,kd,lightIntensity);
 
 
     // Specular Lighting
     vec4 Cs = vec4(0,0,0,0);
     if (blinnPhong){
         // Blinn-Phong Model
-        Cs  = specular_blinn(eta,cos_theta_d,vertColor,vertNormal,H,shininess,lightIntensity);
+        Cs  = specular_blinn(eta,cos_theta_d,vertColor,vertNorm,H,shininess,lightIntensity);
     }else{
         // Cook-Torrance Model
-        Cs = specular_cook(eta,alpha,cos_theta_d,vertColor,vertNormal,lightVectorNorm,eyeVectorNorm,H,lightIntensity);
+        Cs = specular_cook(eta,alpha,cos_theta_d,vertColor,vertNorm,lightVectorNorm,eyeVectorNorm,H,lightIntensity);
      }
      fragColor = Ca +Cd +Cs ;
 }

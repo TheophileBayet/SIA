@@ -26,7 +26,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
-      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true), eta(1.5), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
+      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true),bubble(false), eta(QVector2D(1.5,2.0)), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0),animating(false),animation_time(0), fullScreenSnapshots(false),
       m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
@@ -185,9 +185,14 @@ void glShaderWindow::blinnPhongClicked()
 void glShaderWindow::transparentClicked()
 {
     transparent = true;
+    bubble = false;
     renderNow();
 }
 
+void glShaderWindow::bubbleClicked(){
+  bubble = true;
+  renderNow();
+}
 
 void glShaderWindow::directClicked()
 {
@@ -204,6 +209,7 @@ void glShaderWindow::indirectClicked()
 void glShaderWindow::opaqueClicked()
 {
     transparent = false;
+    bubble = false;
     renderNow();
 }
 
@@ -275,13 +281,17 @@ QWidget *glShaderWindow::makeAuxWindow()
     QGroupBox *groupBox2 = new QGroupBox("Surface:");
     QRadioButton *transparent1 = new QRadioButton("&Transparent");
     QRadioButton *transparent2 = new QRadioButton("&Opaque");
+    QRadioButton *bubble1 = new QRadioButton("&Bulle");
     if (transparent) transparent1->setChecked(true);
     else transparent2->setChecked(true);
+    if(bubble) bubble1->setChecked(true);
     connect(transparent1, SIGNAL(clicked()), this, SLOT(transparentClicked()));
     connect(transparent2, SIGNAL(clicked()), this, SLOT(opaqueClicked()));
+    connect(bubble1,SIGNAL(clicked()),this,SLOT(bubbleClicked()));
     QVBoxLayout *vbox2 = new QVBoxLayout;
     vbox2->addWidget(transparent1);
     vbox2->addWidget(transparent2);
+    vbox2->addWidget(bubble1);
     groupBox2->setLayout(vbox2);
     buttons->addWidget(groupBox2);
     outer->addLayout(buttons);
@@ -812,7 +822,12 @@ void glShaderWindow::loadTexturesForShaders() {
         delete computeResult;
         computeResult = 0;
     }
+
+    // if(!texture){
+      // textureName = "bricks.png";
+    // }
 	// Load textures as required by the shader.
+  // if ((m_program->uniformLocation("colorTexture") != -1) ) {
 	if ((m_program->uniformLocation("colorTexture") != -1) || (ground_program->uniformLocation("colorTexture") != -1)) {
 		glActiveTexture(GL_TEXTURE0);
         // the shader wants a texture. We load one.
@@ -1066,7 +1081,7 @@ void glShaderWindow::mousePressEvent(QMouseEvent *e)
     if (isFullrt){
         changeShader = true;
         setShader("2_phong");
-        animating = true;
+        // animating = true;
         // updateAnimating();
     }
     mouseButton = e->button();
@@ -1238,6 +1253,7 @@ void glShaderWindow::render()
         compute_program->setUniformValue("blinnPhong", blinnPhong);
         compute_program->setUniformValue("transparent", transparent);
         compute_program->setUniformValue("lightning", lightning);
+        compute_program->setUniformValue("bubble", bubble);
         compute_program->setUniformValue("animating",animating);
         compute_program->setUniformValue("animation_time",animation_time);
         compute_program->setUniformValue("lightIntensity", lightIntensity);
@@ -1308,6 +1324,7 @@ void glShaderWindow::render()
     m_program->setUniformValue("lightIntensity", 1.0f);
     m_program->setUniformValue("blinnPhong", blinnPhong);
     m_program->setUniformValue("transparent", transparent);
+    m_program->setUniformValue("bubble", bubble);
     m_program->setUniformValue("lightning", lightning);
     m_program->setUniformValue("animating", animating);
     m_program->setUniformValue("animation_time", animation_time);
@@ -1343,6 +1360,7 @@ void glShaderWindow::render()
         ground_program->setUniformValue("lightIntensity", 1.0f);
         ground_program->setUniformValue("blinnPhong", blinnPhong);
         ground_program->setUniformValue("transparent", transparent);
+        ground_program->setUniformValue("bubble", bubble);
         ground_program->setUniformValue("lightning", lightning);
         ground_program->setUniformValue("animating", animating);
         ground_program->setUniformValue("animation_time", animation_time);

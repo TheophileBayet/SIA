@@ -124,7 +124,7 @@ int main( int argc, char* argv[] )
     setlocale(LC_ALL,"C");
     QApplication app(argc, argv);
     QString sceneName = "teapot.ply";
-    QString textureName = "wildtextures-seamless-wood-planks.jpg";
+    QString textureName = "bricks.png";
     QString envMapName = "pisa.png";
 
     // Read scene name from arguments:

@@ -44,6 +44,7 @@ public slots:
     void cookTorranceClicked();
     void blinnPhongClicked();
     void transparentClicked();
+    void bubbleClicked();
     void opaqueClicked();
     void directClicked();
     void indirectClicked();
@@ -118,6 +119,7 @@ private:
     bool blinnPhong;
     bool transparent;
     bool lightning;
+    bool bubble;
     int refractions;
     float innerRadius;
     QVector2D eta;

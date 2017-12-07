@@ -131,6 +131,7 @@ vec4 specular_blinn(vec4 color, vec4 normal,vec3 toLightSource,vec4 direction){
     vec4 H = vec4(normalize(toLightSource-direction.xyz),1);
     float cost = dot(H,vec4(toLightSource,1));
     float F = fresnel_coeff(cost);
+    // F = 1 ;
     float max = max_scalar_zero(normal,H);
     max = pow(max,shininess);
     return ( F*max* color *  lightIntensity);
