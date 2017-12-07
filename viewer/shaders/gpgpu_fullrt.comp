@@ -16,8 +16,10 @@ uniform vec3 bbmax;
 uniform float radius;
 uniform float groundDistance;
 uniform vec3 center;
+uniform bool animating;
+uniform int animation_time;
 
-#define MAX_SCENE_BOUNDS 2
+#define MAX_SCENE_BOUNDS refractions+1
 #define EPS                 0.000001
 
 
@@ -246,6 +248,7 @@ vec4 trace(vec4 origin, vec4 dir)
                 // return vec4(1,0,0,1);
                 vec4 color = interpolateColor(inter);
                 vec4 normal = interpolateNormal(inter);
+                normal = normalize(normal);
                 vec4  Ca = ambiant(color,0.5);
                 vec4 Cd = diffuse(color,normal,vec4(toLightSource,0),0.5);
                 vec4 Cs = specular_blinn(color,normal,toLightSource,dir);
@@ -284,14 +287,14 @@ bool fillBouncesArray(vec4 origin, vec4 dir,out Pt_t inter ){
     inter.origin=origin;
     inter.dir=dir;
     inter.pt_hit = origin + info.t.w*dir;
-    inter.normal = interpolateNormal(info);
+    inter.normal = normalize(interpolateNormal(info));
     inter.color = trace(origin,dir);
     return true;
   }
   return false;
 }
 
-vec4 computeColor(in Pt_t tab[MAX_SCENE_BOUNDS]){
+vec4 computeColor(in Pt_t tab[10]){
   int max_int = 0 ;
   vec4 color = vec4(0.7,0.7,0.7,1);
   while(tab[max_int].dir.x!=0){
@@ -325,7 +328,7 @@ vec4 computeColor(in Pt_t tab[MAX_SCENE_BOUNDS]){
 }
 
 vec4 traceRays(vec4 origin, vec4 dir){
-  Pt_t inter_array[MAX_SCENE_BOUNDS];
+  Pt_t inter_array[10];
   Pt_t current;
   Pt_t null = {vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,1)};
   for(int i = 0 ; i<MAX_SCENE_BOUNDS; i++){
@@ -353,6 +356,27 @@ void main(void) {
     if (pix.x >= size.x || pix.y >= size.y) {
         return;
     }
+    int num_pixel = animation_time;
+    // vec4 color;
+    // if(animating){
+    //   // if(num_pixel==0){return;}
+    //     if(mod(pix.x,2)==1 && mod(pix.y,2)==0){
+    //       if(num_pixel!=1) return;
+    //       // color = vec4(0,0,0,1);
+    //     }
+    //     if(mod(pix.x,2)==0 && mod(pix.y,2)==0){
+    //       if(num_pixel!=0) return;
+    //     }
+    //     if(mod(pix.x,2)==0 && mod(pix.y,2)==1){
+    //       if(num_pixel!=2) return;
+    //     }
+    //     if(mod(pix.x,2)==1 && mod(pix.y,2)==1){
+    //       if(num_pixel!=3){
+    //         // imageStore(framebuffer,pix,vec4(0,0,0,1));
+    //         return;
+    //         }
+    //     }
+    // }
     vec2 pos = pix / (size - vec2(0.5,0.5));
     // pos in [0,1]^2 Need it in [-1,1]^2:
     pos = 2 * pos - vec2(1.,1.);
@@ -372,5 +396,11 @@ void main(void) {
     }else {
       color = traceRays(eye,dir);
     }
+    // color=vec4(1,0,0,1);
+    // if(mod(pix.x,2)==0 && mod(pix.y,2)==0){
+    //   if(num_pixel==0){
+    //     color = vec4(1,0,0,1);
+    //   }
+    // }
     imageStore(framebuffer, pix, color);
 }

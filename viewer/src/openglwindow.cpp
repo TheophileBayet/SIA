@@ -53,6 +53,7 @@ OpenGLWindow::OpenGLWindow(QWindow *parent)
     : QWindow(parent)
     , m_update_pending(false)
     , m_animating(false)
+    , m_rendering(0)
     , m_context(0)
     , m_device(0)
 {
@@ -144,12 +145,21 @@ void OpenGLWindow::renderNow()
         initialize();
     }
 
+    // TODO : mettre m_animating à true tant que on pas chargé toutes les images.
+    if(m_animating && m_rendering<4){
+      m_rendering+=1;
+      setAnimating(true);
+    }else{
+      setAnimating(false);
+      m_rendering=0;
+    }
     render();
 
     m_context->swapBuffers(this);
 
     if (m_animating)
-        renderLater();
+      renderLater();
+
 }
 //! [4]
 

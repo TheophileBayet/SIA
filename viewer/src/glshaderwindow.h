@@ -52,6 +52,7 @@ public slots:
     void updateEta(int etaSliderValue);
     void updateRefractions(int refractionsSliderValue);
     void updateInnerRadius(int innerRadiusSliderValue);
+    void updateAnimating();
 
 protected:
     void mousePressEvent(QMouseEvent *e);
@@ -77,6 +78,12 @@ private:
     bool isGPGPU;
     // Do we change the shader?
     bool changeShader;
+    // Did we use the wheel ?
+    bool usedWheel;
+    // Are we animating ?
+    bool animating;
+    // which pixel should we treat when animating ?
+    bool animation_time;
     // Are we using fullrt?
     bool isFullrt;
     // Are we using compute shaders?
