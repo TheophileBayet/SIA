@@ -153,7 +153,6 @@ void main( void )
     fragColor = vertColor;
 
     // récupération des variables :
-    vec4 vertNorm = normalize(vertNormal);
     vec4 eyeVectorNorm = normalize(eyeVector);
     vec4 lightVectorNorm = normalize(lightVector);
     float ka = 0.5;
