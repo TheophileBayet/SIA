@@ -63,7 +63,18 @@ protected:
     void timerEvent(QTimerEvent *e);
     void resizeEvent(QResizeEvent * ev);
     void wheelEvent(QWheelEvent * ev);
-
+    void keyPressEvent(QKeyEvent* e)
+    {
+        int key = e->key();
+        switch (key)
+        {
+            case Qt::Key_Space:
+            toggleAnimating();
+            break;
+            default:
+            break;
+        }
+    }
 
 private:
     QOpenGLShaderProgram* prepareShaderProgram(const QString& vertexShaderPath, const QString& fragmentShaderPath);

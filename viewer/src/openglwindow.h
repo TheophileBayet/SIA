@@ -70,7 +70,15 @@ public:
 
     virtual void initialize();
 
+    // void setAnimating(bool animating);
+
     void setAnimating(bool animating);
+    bool getAnimating() { return m_animating; }
+    void toggleAnimating() {
+        m_animating = !m_animating;
+        m_update_pending = false;
+        renderNow();
+    }
 
 public slots:
     void renderLater();
