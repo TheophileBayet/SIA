@@ -1199,6 +1199,22 @@ void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
     mouseButton = Qt::NoButton;
 }
 
+void glShaderWindow::keyPressEvent(QKeyEvent* e)
+{
+    int key = e->key();
+    switch (key)
+    {
+        case Qt::Key_Space:
+        // Il faudra actualiser les matrices de position ici
+        animating = !animating;
+        std::cout << animating << std::endl;
+        toggleAnimating();
+        break;
+        default:
+        break;
+    }
+}
+
 void glShaderWindow::timerEvent(QTimerEvent *e)
 {
 
