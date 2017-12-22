@@ -1167,34 +1167,10 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
 void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 {
     if (changeShader){
-        // animating = true;
-        // animation_time = 0;
         setShader("gpgpu_fullrt");
-        // animating = false ;
         changeShader = false;
         animating = false;
-        // updateAnimating();
-        // setShader("gpgpu_fullrt");
-        // animating = true;
-        // animation_time= 0;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 1;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 2 ;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 3 ;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 0;
-        // animating = false;
-        // updateAnimating();
-        // animation_time = 1;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 2 ;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 3 ;
-        // setShader("gpgpu_fullrt");
-        // animation_time = 0;
-        // setAnimating(true);
+
     }
     mouseButton = Qt::NoButton;
 }

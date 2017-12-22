@@ -6,3 +6,11 @@ Comprendre les interactions avec QT.
 
 ne pas se mettre en PLS 
 
+Mettre en place une animation en fonction de la barre espace. ( boucle d'animation ) 
+
+
+essayer de rester juste avec des vertex shader + des fragments shader, eviter les compute shader.
+
+
+Créer un nouveau shader pour l'affichage, afficher des points dedans, et tenter de les animer. 
+
