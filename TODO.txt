@@ -1,0 +1,8 @@
+comprendre le binding. 
+
+Essayer de refaire comme la génération sol / scène : on peut afficher le squelette et un autre truc spécifique. 
+
+Comprendre les interactions avec QT.
+
+ne pas se mettre en PLS 
+
