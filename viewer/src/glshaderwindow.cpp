@@ -1181,13 +1181,13 @@ void glShaderWindow::keyPressEvent(QKeyEvent* e)
     switch (key)
     {
         case Qt::Key_Space:
-        // Il faudra actualiser les matrices de position ici
-        animating = !animating;
-        std::cout << animating << std::endl;
-        toggleAnimating();
-        break;
+            // Il faudra actualiser les matrices de position ici
+            animating = !animating;
+            std::cout << animating << std::endl;
+            toggleAnimating();
+            break;
         default:
-        break;
+            break;
     }
 }
 
