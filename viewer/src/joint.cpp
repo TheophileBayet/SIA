@@ -1,27 +1,27 @@
 #include "joint.h"
 #include <QtGui/QMatrix4x4>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
 
 Joint* Joint::createFromFile(std::string fileName) {
-	Joint* root = NULL;
+	Joint* root = new Joint();
 	cout << "Loading from " << fileName << endl;
 
 	ifstream inputfile(fileName.data());
 	if(inputfile.good()) {
 		while(!inputfile.eof()) {
 
-			string buf;
+			std::string buf;
 			inputfile >> buf; // read HIERARCHY
 			if (strcmp(buf.data(),"HIERARCHY") == 0){
 				inputfile >> buf; // read ROOT
-				// On remplit le Joint root
 				if (strcmp(buf.data(),"ROOT") != 0){
 					return NULL;
 				}
 				root = read_joint(inputfile);
-				
+
 			} else if (strcmp(buf.data(),"MOTION") == 0){
 				// Remplir les motions en parcourant l'arbre de root
 				inputfile >> buf;
@@ -52,13 +52,12 @@ Joint* Joint::createFromFile(std::string fileName) {
 				}
 			}
 		}
+		cout << "file loaded" << endl;
 		inputfile.close();
 	} else {
 		std::cerr << "Failed to load the file " << fileName.data() << std::endl;
 		fflush(stdout);
 	}
-
-	cout << "file loaded" << endl;
 
 	return root;
 }
@@ -103,8 +102,9 @@ void Joint::nbDofs() {
 int Joint::nbChannels(){
 	int nbr = _dofs.size();
 	for (unsigned int ichild = 0 ; ichild < _children.size() ; ichild++) {
-		return nbr+_children[ichild]->nbChannels();
+		 nbr += _children[ichild]->nbChannels();
 	}
+	return nbr;
 }
 
 Joint* Joint::read_joint(std::ifstream &inputfile){

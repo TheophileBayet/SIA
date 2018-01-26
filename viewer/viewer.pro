@@ -2,9 +2,15 @@
 DESTDIR = ../viewer
 # ENDIF
 QT       += core gui opengl
+CONFIG += DEBUG
 
 TARGET = myViewer
 TEMPLATE = app
+
+debug{
+QMAKE_CXXFLAGS += -g -O0
+QMAKE_LFLAGS += -g -O0
+}
 
 macx {
   QMAKE_CXXFLAGS += -Wno-unknown-pragmas
