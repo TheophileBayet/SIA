@@ -3,6 +3,7 @@
 
 #include "openglwindow.h"
 #include "TriMesh.h"
+#include "joint.h"
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QMatrix4x4>
@@ -86,7 +87,8 @@ private:
     void loadTexturesForShaders();
     void openScene();
     void mouseToTrackball(QVector2D &in, QVector3D &out);
-
+    int treeCount(Joint* root, int count);
+    void treeConstruct(Joint* root);
     // Are we using GPGPU?
     bool isGPGPU;
     // Do we change the shader?
@@ -116,6 +118,15 @@ private:
     int *g_indices;
     int g_numPoints;
     int g_numIndices;
+    // Joints
+    //TODO : adapter pour la lecture des joinst
+    trimesh::point *j_vertices;
+    trimesh::vec *j_normals;
+    trimesh::vec2 *j_texcoords;
+    trimesh::point *j_colors;
+    int *j_indices;
+    int j_numPoints;
+    int j_numIndices;
     // GPGPU
     trimesh::point *gpgpu_vertices;
     trimesh::vec *gpgpu_normals;
@@ -145,6 +156,7 @@ private:
     QOpenGLShaderProgram *ground_program;
     QOpenGLShaderProgram *compute_program;
     QOpenGLShaderProgram *shadowMapGenerationProgram;
+    QOpenGLShaderProgram *joints_program;
     QOpenGLTexture* environmentMap;
     QOpenGLTexture* texture;
     QOpenGLTexture* permTexture;   // for Perlin noise
@@ -167,6 +179,13 @@ private:
     QOpenGLBuffer ground_normalBuffer;
     QOpenGLBuffer ground_colorBuffer;
     QOpenGLBuffer ground_texcoordBuffer;
+    // Joints
+    QOpenGLVertexArrayObject joints_vao;
+    QOpenGLBuffer joints_vertexBuffer;
+    QOpenGLBuffer joints_indexBuffer;
+    QOpenGLBuffer joints_normalBuffer;
+    QOpenGLBuffer joints_colorBuffer;
+    QOpenGLBuffer joints_texcoordBuffer;
     // Matrix for all objects
     QMatrix4x4 m_matrix[3]; // 0 = object, 1 = light, 2 = ground
     QMatrix4x4 m_perspective;
