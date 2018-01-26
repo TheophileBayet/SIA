@@ -694,12 +694,9 @@ void glShaderWindow::bindSceneToProgram()
     ground_vao.release();
 
     // bind joints to programm :
-    //TODO : create the VAO from scratch
 
     joints_vao.bind();
-    // TODO : Récupérer les informations du parseur et construire la representation
-    Joint* root = pars(fichier.bvh);
-
+    Joint* root = Joint::createFromFile("./viewer/animation/walk1.bvh");
     // Algorithme de parcours :
     // Tracer de current vers chacun des fils
     // Itérer sur les fils
@@ -1093,7 +1090,6 @@ void glShaderWindow::initialize()
     joints_texcoordBuffer.create();
     joints_vao.release();
     openScene();
-    Joint* root = Joint::createFromFile("animation/walk1.bvh");
 }
 
 void glShaderWindow::resizeEvent(QResizeEvent* event)

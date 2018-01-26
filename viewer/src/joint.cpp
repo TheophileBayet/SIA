@@ -1,17 +1,18 @@
 #include "joint.h"
 #include <QtGui/QMatrix4x4>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
 
 Joint* Joint::createFromFile(std::string fileName) {
-	Joint* root = NULL;
+	Joint* root = new Joint();
 	cout << "Loading from " << fileName << endl;
 
 	ifstream inputfile(fileName.data());
 	if(inputfile.good()) {
 		while(!inputfile.eof()) {
-			string buf;
+			std::string buf;
 			inputfile >> buf;
 			if (strcmp(buf.data(),"HIERARCHY") == 0){
 				inputfile >> buf;
@@ -78,13 +79,12 @@ Joint* Joint::createFromFile(std::string fileName) {
 				}
 			}
 		}
+		cout << "file loaded" << endl;
 		inputfile.close();
 	} else {
 		std::cerr << "Failed to load the file " << fileName.data() << std::endl;
 		fflush(stdout);
 	}
-
-	cout << "file loaded" << endl;
 
 	return root;
 }
