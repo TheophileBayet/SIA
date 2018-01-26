@@ -978,7 +978,7 @@ void glShaderWindow::initialize()
     ground_texcoordBuffer.create();
     ground_vao.release();
     openScene();
-    Joint* root = Joint::createFromFile("animation/walk1.bvh");
+    Joint* root = Joint::createFromFile("./viewer/animation/walk1.bvh");
 }
 
 void glShaderWindow::resizeEvent(QResizeEvent* event)

@@ -60,7 +60,9 @@ Joint* Joint::createFromFile(std::string fileName) {
 					inputfile >> buf;
 					inputfile >> buf; // frame time
 					inputfile >> buf; // On arrive sur le début des valeurs
-					std::vector<std::vector<double>> values = std::vector<std::vector<double>>(nbr_frames);
+					int nb_channels = root->nbChannels();
+					std::cout << "nbrChannels = " << nb_channels << std::endl;
+					std::vector<std::vector<double>> values = std::vector<std::vector<double>>(nb_channels, std::vector<double>(nbr_frames));
 					// On boucle sur les lignes de frames
 					for (int j = 0; j < nbr_frames; j++){
 						std::getline(inputfile,buf) >> std::ws;
@@ -124,6 +126,13 @@ void Joint::nbDofs() {
 		_children[ichild]->nbDofs();
 	}
 
+}
+
+int Joint::nbChannels(){
+	int nbr = _dofs.size();
+	for (unsigned int ichild = 0 ; ichild < _children.size() ; ichild++) {
+		return nbr+_children[ichild]->nbChannels();
+	}
 }
 
 Joint* Joint::read_joint(std::ifstream &inputfile, Joint* parent){
