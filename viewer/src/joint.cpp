@@ -48,6 +48,7 @@ Joint* Joint::createFromFile(std::string fileName) {
 				// Normalement, on arrive à un joint fils
 				if (strcmp(buf.data(),"JOINT") == 0){
 					Joint* children = read_joint(inputfile,root);
+					root = children;
 				}
 			} else if (strcmp(buf.data(),"MOTION") == 0){
 				// Remplir les motions en parcourant l'arbre de root
