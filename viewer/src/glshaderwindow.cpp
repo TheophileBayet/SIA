@@ -1,4 +1,5 @@
 #include "glshaderwindow.h"
+#include "joint.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QPixmap>
@@ -1092,6 +1093,7 @@ void glShaderWindow::initialize()
     joints_texcoordBuffer.create();
     joints_vao.release();
     openScene();
+    Joint* root = Joint::createFromFile("animation/walk1.bvh");
 }
 
 void glShaderWindow::resizeEvent(QResizeEvent* event)
@@ -1288,6 +1290,22 @@ void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 
     }
     mouseButton = Qt::NoButton;
+}
+
+void glShaderWindow::keyPressEvent(QKeyEvent* e)
+{
+    int key = e->key();
+    switch (key)
+    {
+        case Qt::Key_Space:
+            // Il faudra actualiser les matrices de position ici
+            animating = !animating;
+            std::cout << animating << std::endl;
+            toggleAnimating();
+            break;
+        default:
+            break;
+    }
 }
 
 void glShaderWindow::timerEvent(QTimerEvent *e)

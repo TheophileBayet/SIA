@@ -35,7 +35,7 @@ public :
 	double _curRy;						// current value of rotation about Y (deg)
 	double _curRz;						// current value of rotation about Z (deg)
 	int _rorder;						// order of euler angles to reconstruct rotation
-	std::vector<Joint*> _children;	// children of the current joint
+	std::vector<Joint*> _children;		// children of the current joint
 
 
 public :
@@ -66,13 +66,17 @@ public :
 		return child;
 	}
 
-	// Load from file (.bvh) :	
+	// Load from file (.bvh) :
 	static Joint* createFromFile(std::string fileName);
 
 	void animate(int iframe=0);
 
 	// Analysis of degrees of freedom :
 	void nbDofs();
+
+	static Joint* read_joint(std::ifstream &inputfile, Joint* parent);
+
+	void fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>> values);
 };
 
 
