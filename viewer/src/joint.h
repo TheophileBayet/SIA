@@ -73,6 +73,10 @@ public :
 
 	// Analysis of degrees of freedom :
 	void nbDofs();
+
+	static Joint* read_joint(std::ifstream &inputfile, Joint* parent);
+
+	void fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>> values);
 };
 
 

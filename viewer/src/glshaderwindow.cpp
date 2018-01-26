@@ -1,4 +1,5 @@
 #include "glshaderwindow.h"
+#include "joint.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QPixmap>
@@ -977,6 +978,7 @@ void glShaderWindow::initialize()
     ground_texcoordBuffer.create();
     ground_vao.release();
     openScene();
+    Joint* root = Joint::createFromFile("animation/walk1.bvh");
 }
 
 void glShaderWindow::resizeEvent(QResizeEvent* event)
