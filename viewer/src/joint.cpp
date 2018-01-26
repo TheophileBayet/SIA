@@ -191,8 +191,8 @@ void Joint::fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>>
 	}
 	previous_nb_c += nbr_channels;
 	for (unsigned int ichild = 0 ; ichild < _children.size() ; ichild++) {
-		if(_children[ichild]->_dofs[0]._values.empty()){
-			_children[ichild]->fill_AnimCurves(previous_nb_c, values);
-		}
+		//if(_children[ichild]->_dofs[0]._values.empty()){
+		_children[ichild]->fill_AnimCurves(previous_nb_c, values);
+		//}
 	}
 }
