@@ -11,45 +11,17 @@ Joint* Joint::createFromFile(std::string fileName) {
 	ifstream inputfile(fileName.data());
 	if(inputfile.good()) {
 		while(!inputfile.eof()) {
+
 			string buf;
-			inputfile >> buf;
+			inputfile >> buf; // read HIERARCHY
 			if (strcmp(buf.data(),"HIERARCHY") == 0){
-				inputfile >> buf;
+				inputfile >> buf; // read ROOT
 				// On remplit le Joint root
-				while(strcmp(buf.data(),"JOINT") != 0){
-					if (strcmp(buf.data(),"ROOT") == 0){
-						inputfile >> buf;
-						root->_name = buf;
-						inputfile >> buf;
-					} else if (strcmp(buf.data(),"OFFSET") == 0){
-							inputfile >> buf;
-							root->_offX = std::stod(buf);
-							inputfile >> buf;
-							root->_offY = std::stod(buf);
-							inputfile >> buf;
-							root->_offZ = std::stod(buf);
-							inputfile >> buf;
-					} else if (strcmp(buf.data(),"CHANNELS") == 0){
-						inputfile >> buf;
-						int nbr_channels = std::stoi(buf);
-						root->_dofs.reserve(nbr_channels);
-						for (int i = 0; i < nbr_channels; i++){
-							inputfile >> buf;
-							AnimCurve* anim = new AnimCurve();
-							anim->name = buf;
-							anim->_values.clear();
-							root->_dofs.push_back(*anim);
-						}
-						inputfile >> buf;
-					} else {
-						inputfile >> buf;
-					}
+				if (strcmp(buf.data(),"ROOT") != 0){
+					return NULL;
 				}
-				// Normalement, on arrive à un joint fils
-				if (strcmp(buf.data(),"JOINT") == 0){
-					Joint* children = read_joint(inputfile,root);
-					root = children;
-				}
+				root = read_joint(inputfile);
+				
 			} else if (strcmp(buf.data(),"MOTION") == 0){
 				// Remplir les motions en parcourant l'arbre de root
 				inputfile >> buf;
@@ -135,81 +107,80 @@ int Joint::nbChannels(){
 	}
 }
 
-Joint* Joint::read_joint(std::ifstream &inputfile, Joint* parent){
+Joint* Joint::read_joint(std::ifstream &inputfile){
 
 	Joint* cur = new Joint();
 	string buf;
-	inputfile >> buf;
 
-	// On a trouve un joint qui defini la fin de la branche
-	if (strcmp(buf.data(),"End") == 0){
-		// Nom du joint
-		inputfile >> buf;
-		cur->_name = buf;
-		inputfile >> buf;
-		// Tant qu'on n'est pas a la fin du joint
-		while (strcmp(buf.data(),"}") != 0){
-			if (strcmp(buf.data(),"OFFSET") == 0){
-				inputfile >> buf;
-				cur->_offX = std::stod(buf);
-				inputfile >> buf;
-				cur->_offY = std::stod(buf);
-				inputfile >> buf;
-				cur->_offZ = std::stod(buf);
-				inputfile >> buf;
-			} else {
-				inputfile >> buf;
-			}
-		}
-		// On a atteint la fin du joint
-		if(parent != NULL) {
-			parent->_children.push_back(cur);
-		}
-		// On renvoit le parent du joint courant
-		return parent;
-
-	// On a trouve un joint (pas la fin)
-	} else if (strcmp(buf.data(),"JOINT") == 0){
-		// Nom du joint
-		inputfile >> buf;
-		cur->_name = buf;
-		inputfile >> buf;
-		// Fin du joint = autre joint ou end
-		// Tant qu'on n'est pas a la fin du joint
-		while (strcmp(buf.data(),"JOINT") != 0 || strcmp(buf.data(),"End") != 0){
-			if (strcmp(buf.data(),"OFFSET") == 0){
-				inputfile >> buf;
-				cur->_offX = std::stod(buf);
-				inputfile >> buf;
-				cur->_offY = std::stod(buf);
-				inputfile >> buf;
-				cur->_offZ = std::stod(buf);
-				inputfile >> buf;
-			} else if (strcmp(buf.data(),"CHANNELS") == 0){
-				inputfile >> buf;
-				int nbr_channels = std::stoi(buf);
-				cur->_dofs.reserve(nbr_channels);
-				for (int i = 0; i < nbr_channels; i++){
-					inputfile >> buf;
-					AnimCurve* anim = new AnimCurve();
-					anim->name = buf;
-					anim->_values.clear();
-					cur->_dofs.push_back(*anim);
-				}
-				inputfile >> buf;
-			} else {
-				inputfile >> buf;
-			}
-		}
-		if(parent != NULL) {
-			parent->_children.push_back(cur);
-		}
-		// On a retrouvé un joint fils
-		return read_joint(inputfile,cur);
-	// Si on trouve une accolade fermante
-	} else if (strcmp(buf.data(), "}") == 0){
-		return parent;
+	inputfile >> buf; // read joint name
+	cur->_name = buf;
+	inputfile >> buf; // read {
+	inputfile >> buf; // read OFFSET
+	if (strcmp(buf.data(),"OFFSET") != 0){
+		return NULL;
 	}
+	inputfile >> buf; // read offX
+	cur->_offX = std::stod(buf);
+	inputfile >> buf; // read offY
+	cur->_offY = std::stod(buf);
+	inputfile >> buf; // read offZ
+	cur->_offZ = std::stod(buf);
+	inputfile >> buf; // read CHANNELS
+	if (strcmp(buf.data(),"CHANNELS") != 0){
+		return NULL;
+	}
+	inputfile >> buf; // read nb CHANNELS
+	int nbr_channels = std::stoi(buf);
+	cur->_dofs.reserve(nbr_channels);
+	for (int i = 0; i < nbr_channels; i++){
+		inputfile >> buf; // read i-th channels
+		AnimCurve* anim = new AnimCurve();
+		anim->name = buf;
+		anim->_values.clear();
+		cur->_dofs.push_back(*anim);
+	}
+	inputfile >> buf; // read JOINT ou END ou }
+
+	while(strcmp(buf.data(),"}") != 0){
+		if (strcmp(buf.data(),"JOINT") == 0){
+			cur->_children.push_back(read_joint(inputfile));
+		} else if (strcmp(buf.data(),"End") == 0){
+			cur->_children.push_back(read_end(inputfile));
+		} else {
+			return NULL;
+		}
+		inputfile >> buf; // read JOINT ou END ou }
+	}
+
+	return cur;
+
+}
+
+Joint* Joint::read_end(std::ifstream &inputfile){
+
+	Joint* cur = new Joint();
+	string buf;
+
+	inputfile >> buf; // read joint name
+	cur->_name = buf;
+	inputfile >> buf; // read {
+	inputfile >> buf; // read OFFSET
+	if (strcmp(buf.data(),"OFFSET") != 0){
+		return NULL;
+	}
+	inputfile >> buf; // read offX
+	cur->_offX = std::stod(buf);
+	inputfile >> buf; // read offY
+	cur->_offY = std::stod(buf);
+	inputfile >> buf; // read offZ
+	cur->_offZ = std::stod(buf);
+	inputfile >> buf; // read }
+	if (strcmp(buf.data(),"}") != 0){
+		return NULL;
+	}
+
+	return cur;
+
 }
 
 void Joint::fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>> values){

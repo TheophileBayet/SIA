@@ -75,7 +75,9 @@ public :
 	void nbDofs();
 	int nbChannels();
 
-	static Joint* read_joint(std::ifstream &inputfile, Joint* parent);
+	static Joint* read_joint(std::ifstream &inputfile);
+
+	static Joint* read_end(std::ifstream &inputfile);
 
 	void fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>> values);
 };
