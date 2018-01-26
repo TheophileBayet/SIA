@@ -73,6 +73,7 @@ public :
 
 	// Analysis of degrees of freedom :
 	void nbDofs();
+	int nbChannels();
 
 	static Joint* read_joint(std::ifstream &inputfile, Joint* parent);
 
