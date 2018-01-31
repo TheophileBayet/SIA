@@ -5,7 +5,6 @@ uniform bool blinnPhong;
 uniform float shininess;
 uniform vec2 eta;
 uniform sampler2D shadowMap;
-uniform Joint joint;
 
 in vec4 eyeVector;
 in vec4 lightVector;
@@ -23,5 +22,5 @@ main puts the good value in fragColor
 */
 void main( void )
 {
-  
+  fragColor=vertColor;
 }

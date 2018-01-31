@@ -90,6 +90,8 @@ private:
     bool animation_time;
     // Are we using fullrt?
     bool isFullrt;
+    // Are we animating the skeleton ?
+    bool isSkeleton;
     // Are we using compute shaders?
     bool hasComputeShaders;
     // Model we are displaying:

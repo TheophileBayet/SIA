@@ -29,7 +29,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       j_vertices(0), j_normals(0), j_texcoords(0), j_colors(0), j_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
-      isGPGPU(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true),bubble(false), eta(QVector2D(1.5,2.0)), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
+      isGPGPU(false),isSkeleton(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true),bubble(false), eta(QVector2D(1.5,2.0)), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0),animating(false),animation_time(0), fullScreenSnapshots(false),
       m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), joints_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
@@ -707,7 +707,10 @@ void glShaderWindow::bindSceneToProgram()
     if (j_texcoords == 0) j_texcoords = new trimesh::vec2[j_numPoints];
     if (j_indices == 0) j_indices = new int[(j_numPoints-1)*2];
     j_numIndices=1;
-    j_vertices[0]=trimesh::point(root->_offX,root->_offY,root->_offZ,0);
+    j_vertices[0]=trimesh::point(root->_offX,root->_offY,root->_offZ,1);
+    j_normals[0]=trimesh::point(0,1,0,0);
+    j_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
+    j_texcoords[0] = trimesh::vec2(0,0);
     treeConstruct(root);
     joints_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
     joints_vertexBuffer.bind();
@@ -725,7 +728,6 @@ void glShaderWindow::bindSceneToProgram()
     joints_texcoordBuffer.bind();
     joints_texcoordBuffer.allocate(j_texcoords, j_numPoints * sizeof(trimesh::vec2));
     joints_program->bind();
-    //TODO : ajouter la gestion des attributs
     joints_vertexBuffer.bind();
     joints_program->setAttributeBuffer("vertex",GL_FLOAT,0,4);
     joints_program->enableAttributeArray("vertex");
@@ -864,6 +866,8 @@ void glShaderWindow::setShader(const QString& shader)
     QString computeShader;
     isGPGPU = shader.contains("gpgpu", Qt::CaseInsensitive);
     isFullrt = shader.contains("fullrt", Qt::CaseInsensitive);
+    isSkeleton = shader.contains("animation",Qt::CaseInsensitive);
+    // TODO : gérer le shader pour lancer le compute du squelette ici
     foreach (const QString &str, shaders) {
         QString suffix = str.right(str.size() - str.lastIndexOf("."));
         if (m_vertShaderSuffix.filter(suffix).size() > 0) {
@@ -876,17 +880,29 @@ void glShaderWindow::setShader(const QString& shader)
             computeShader = shaderPath + str;
         }
     }
-    m_program = prepareShaderProgram(vertexShader, fragmentShader);
-    if (computeShader.length() > 0) {
-    	compute_program = prepareComputeProgram(computeShader);
-        if (compute_program) createSSBO();
-	} else if (compute_program) {
-        compute_program->release();
-        delete compute_program;
-        compute_program = 0;
-        hasComputeShaders = false;
-        // TODO: release SSBO
-    }
+    if(!isSkeleton){
+      m_program = prepareShaderProgram(vertexShader, fragmentShader);
+      if (computeShader.length() > 0) {
+    	   compute_program = prepareComputeProgram(computeShader);
+         if (compute_program) createSSBO();
+	      } else if (compute_program) {
+          compute_program->release();
+          delete compute_program;
+          compute_program = 0;
+          hasComputeShaders = false;
+        }
+      }else{
+        joints_program=prepareShaderProgram(vertexShader,fragmentShader);
+        if (computeShader.length() > 0) {
+    	   compute_program = prepareComputeProgram(computeShader);
+         if (compute_program) createSSBO();
+	      } else if (compute_program) {
+          compute_program->release();
+          delete compute_program;
+          compute_program = 0;
+          hasComputeShaders = false;
+        }
+      }
     bindSceneToProgram();
     loadTexturesForShaders();
     if(animating && isFullrt ) animation_time = (animation_time-1)%4;
@@ -1050,7 +1066,7 @@ void glShaderWindow::initialize()
       joints_program -> release();
       delete(joints_program);
     }
-    joints_program = prepareShaderProgram(shaderPath + "3_textured.vert", shaderPath + "3_textured.frag");
+    joints_program = prepareShaderProgram(shaderPath + "animation.vert", shaderPath + "animation.frag");
     if (shadowMapGenerationProgram) {
         shadowMapGenerationProgram->release();
         delete(shadowMapGenerationProgram);
@@ -1059,7 +1075,6 @@ void glShaderWindow::initialize()
 
     // loading texture:
     loadTexturesForShaders();
-
     m_vao.create();
     m_vao.bind();
     m_vertexBuffer.create();
@@ -1452,13 +1467,13 @@ void glShaderWindow::render()
         m_program->setUniformValue("shadowMap", 2);
         // TODO_shadowMapping: send the right transform here
     }
+    if (isGPGPU){
+      m_vao.bind();
+      glDrawElements(GL_TRIANGLES, 3 * m_numFaces, GL_UNSIGNED_INT, 0);
+      m_vao.release();
+      m_program->release();
+    }
 
-    m_vao.bind();
-    glDrawElements(GL_TRIANGLES, 3 * m_numFaces, GL_UNSIGNED_INT, 0);
-    m_vao.release();
-    m_program->release();
-
-    // TODO : rajouter la clause avec joints_vao.
 
     if (!isGPGPU) {
         // also draw the ground, with a different shader program
@@ -1491,5 +1506,66 @@ void glShaderWindow::render()
         glDrawElements(GL_TRIANGLES, g_numIndices, GL_UNSIGNED_INT, 0);
         ground_vao.release();
         ground_program->release();
+    }
+
+    if (isSkeleton ) {
+        // also draw the joints, with a different shader program
+        joints_program->bind();
+        joints_program->setUniformValue("lightPosition", lightPosition);
+        joints_program->setUniformValue("matrix", m_matrix[0]);
+        joints_program->setUniformValue("lightMatrix", m_matrix[1]);
+        joints_program->setUniformValue("perspective", m_perspective);
+        joints_program->setUniformValue("normalMatrix", m_matrix[0].normalMatrix());
+        joints_program->setUniformValue("lightIntensity", 1.0f);
+        joints_program->setUniformValue("blinnPhong", blinnPhong);
+        joints_program->setUniformValue("transparent", transparent);
+        joints_program->setUniformValue("bubble", bubble);
+        joints_program->setUniformValue("lightning", lightning);
+        joints_program->setUniformValue("animating", animating);
+        joints_program->setUniformValue("animation_time", animation_time);
+        joints_program->setUniformValue("lightIntensity", lightIntensity);
+        joints_program->setUniformValue("refractions", refractions);
+        joints_program->setUniformValue("innerRadius", innerRadius);
+        joints_program->setUniformValue("shininess", shininess);
+        joints_program->setUniformValue("eta", eta);
+        // joints_program->setUniformValue("eta.y", eta.y);
+        joints_program->setUniformValue("radius", modelMesh->bsphere.r);
+		if (joints_program->uniformLocation("colorTexture") != -1) joints_program->setUniformValue("colorTexture", 0);
+        if (joints_program->uniformLocation("shadowMap") != -1) {
+            joints_program->setUniformValue("shadowMap", 2);
+            // TODO_shadowMapping: send the right transform here
+        }
+        joints_vao.bind();
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR){
+          std::cout << "GL error: " << err << std::endl;
+        }
+        glDrawElements(GL_LINES,(j_numPoints-1)*2 , GL_UNSIGNED_INT, j_indices);
+
+        while ((err = glGetError()) != GL_NO_ERROR){
+          std::cout << "GL second error: " << err << std::endl;
+        }
+
+        //std::cout<<" numPoints : " <<j_numPoints<<std::endl;
+
+        /*
+        for (int i =0 ; i < j_numPoints; i++ ){
+          std::cout<<" j_vertices : " <<(j_vertices)[i]<<std::endl;
+        }
+        */
+        /*
+        std::cout<<" j_normals : " <<(*j_normals)<<std::endl;
+        std::cout<<" j_colors : " <<(*j_colors)<<std::endl;
+        std::cout<<" j_indices : " <<(j_indices)[0]<<std::endl;
+        */
+
+        joints_vao.release();
+        joints_program->release();
+        m_program->bind();
+        m_vao.bind();
+        glDrawElements(GL_LINES,(j_numPoints-1)*2 , GL_UNSIGNED_INT, j_indices);
+        m_vao.release();
+        m_program->release();
+
     }
 }
