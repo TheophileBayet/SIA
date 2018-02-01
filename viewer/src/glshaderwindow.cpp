@@ -26,7 +26,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
     : OpenGLWindow(parent), modelMesh(0),
       m_program(0), ground_program(0), ground2_program(0), joints_program(0), compute_program(0), shadowMapGenerationProgram(0),
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
-      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),
+      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),frame(0),trn(0),
       j_vertices(0), j_colors(0),j_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
@@ -300,6 +300,21 @@ void glShaderWindow::updateAnimating()
   setAnimating(animating);
 }
 
+void glShaderWindow::updateJoints(Joint* root){
+  /*
+  std::vector<Joint*> child = root->_children;
+  trimesh::point trans = trimesh::point(root->_curTx,root->_curTy,root->_curTz,0);
+  std::cout<< "Translations" << root->_curTx << " ; " <<root->_curTy << " ; " << root->_curTz << std::endl;
+  int curr = g2_numIndices ;
+  g2_vertices[g2_numIndices]+= trans;
+  for(int i = 0; i < child.size(); i ++){
+    Joint* tmp = child[i];
+    //trimesh::matrix T = trimesh::matrix(tmp->_curTx,tmp->_curTy,tmp->_curTz,1);
+    g2_numIndices++;
+    updateJoints(tmp);
+  }*/
+}
+
 QWidget *glShaderWindow::makeAuxWindow()
 {
     if (auxWidget)
@@ -499,15 +514,32 @@ int glShaderWindow::treeCount(Joint* root, int count){
 void glShaderWindow::treeConstruct(Joint* root){
   std::vector<Joint*> child = root->_children;
   int curr = g2_numIndices;
+  QVector4D vec;
   for(int i = 0; i < child.size(); i ++){
     Joint* tmp = child[i];
+    // Remplir les buffer avec les valeurs de base :
+    trn[g2_numIndices+1]+=trimesh::point(tmp->_curTx,tmp->_curTy,tmp->_curTz,0);
     g2_vertices[g2_numIndices+1]=trimesh::point((g2_vertices[curr])[0]+tmp->_offX,(g2_vertices[curr])[1]+tmp->_offY,(g2_vertices[curr])[2]+tmp->_offZ,1);
     g2_colors[g2_numIndices+1] = trimesh::point(1, 0, 0, 1);
     g2_normals[g2_numIndices+1]=trimesh::point(0,1,0,0);
     g2_texcoords[g2_numIndices+1]=trimesh::vec2(0,0);
     g2_indices[(g2_numIndices)*2] = curr;
+    g2_indices[(g2_numIndices)*2+1] = g2_numIndices+1;
     g2_numIndices++;
-    g2_indices[(g2_numIndices-1)*2+1] = g2_numIndices;
+
+    // Partie Matrices de Rotation pour animation
+    /*
+    QMatrix4x4 t_tmp;
+    trn[g2_numIndices]=t_tmp;
+    vec = QVector4D();
+    vec.setX((g2_vertices[g2_numIndices])[0]);
+    vec.setY((g2_vertices[g2_numIndices])[1]);
+    vec.setZ((g2_vertices[g2_numIndices])[2]);
+    vec.setW(1);
+    vec = t_tmp * vec ;
+    g2_vertices[g2_numIndices] = trimesh::point(vec.x(),vec.y(),vec.z(),vec.w());
+*/
+    // On réitère sur les fils
     treeConstruct(tmp);
   }
 }
@@ -725,7 +757,7 @@ void glShaderWindow::bindSceneToProgram()
     float radius2 = modelMesh->bsphere.r;
     // Allocate once, fill in for every new model.
 
-    Joint* root = Joint::createFromFile("./viewer/animation/walk1.bvh");
+    root = Joint::createFromFile("./viewer/animation/walk1.bvh");
     // Algorithme de parcours :
     // Tracer de current vers chacun des fils
     // Itérer sur les fils
@@ -735,8 +767,10 @@ void glShaderWindow::bindSceneToProgram()
     if (g2_colors == 0) g2_colors = new trimesh::point[g2_numPoints];
     if (g2_texcoords == 0) g2_texcoords = new trimesh::vec2[g2_numPoints];
     if (g2_indices == 0) g2_indices = new int[(g2_numPoints-1)*2];
+    if (trn == 0) trn = new trimesh::point[g2_numPoints];
     g2_numIndices=0;
-    g2_vertices[0]=trimesh::point(root->_offX,root->_offY,root->_offZ,1);
+    trn[0]+=trimesh::point(root->_curTx,root->_curTy,root->_curTz,0);
+    g2_vertices[0]=trimesh::point(root->_offX+(trn[0])[0],root->_offY+(trn[0])[1],root->_offZ+(trn[0])[2],1);
     g2_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
     g2_normals[0]= trimesh::point(0,1,0,0);
     g2_texcoords[0]= trimesh::vec2(0,0);
@@ -1408,8 +1442,9 @@ void glShaderWindow::keyPressEvent(QKeyEvent* e)
     {
         case Qt::Key_Space:
             // Il faudra actualiser les matrices de position ici
-            animating = !animating;
-            std::cout << animating << std::endl;
+            animating = true;
+            root->animate(frame);
+            frame++;
             toggleAnimating();
             break;
         default:
@@ -1650,6 +1685,15 @@ void glShaderWindow::render()
         }
 
         // Affichage des variables pour recherche
+
+        if(animating){
+          std::cout<< "animating" << std::endl;
+          g2_numIndices = 0 ;
+          updateJoints(root);
+          bindSceneToProgram();
+          animating = false;
+        }
+        /*
         for (int i =0 ; i < g2_numPoints; i++ ){
           std::cout<<" g_vertices : " <<(g2_vertices)[i]<<std::endl;
         }
@@ -1660,68 +1704,8 @@ void glShaderWindow::render()
         std::cout<<" g2_numIndices : " <<g2_numIndices<<std::endl;
         std::cout<<" g2_numPoints : " <<g2_numPoints<<std::endl;
         std::cout<<" nb_arrete : " <<nb_arrete<<std::endl;
+        */
         ground2_vao.release();
         ground2_program->release();
     }
-    /*
-    if (isSkeleton ) {
-        // also draw the joints, with a different shader program
-        joints_program->bind();
-        joints_program->setUniformValue("lightPosition", lightPosition);
-        joints_program->setUniformValue("matrix", m_matrix[0]);
-        joints_program->setUniformValue("lightMatrix", m_matrix[1]);
-        joints_program->setUniformValue("perspective", m_perspective);
-        joints_program->setUniformValue("normalMatrix", m_matrix[0].normalMatrix());
-        joints_program->setUniformValue("lightIntensity", 1.0f);
-        joints_program->setUniformValue("blinnPhong", blinnPhong);
-        joints_program->setUniformValue("transparent", transparent);
-        joints_program->setUniformValue("bubble", bubble);
-        joints_program->setUniformValue("lightning", lightning);
-        joints_program->setUniformValue("animating", animating);
-        joints_program->setUniformValue("animation_time", animation_time);
-        joints_program->setUniformValue("lightIntensity", lightIntensity);
-        joints_program->setUniformValue("refractions", refractions);
-        joints_program->setUniformValue("innerRadius", innerRadius);
-        joints_program->setUniformValue("shininess", shininess);
-        joints_program->setUniformValue("eta", eta);
-        // joints_program->setUniformValue("eta.y", eta.y);
-        joints_program->setUniformValue("radius", modelMesh->bsphere.r);
-        if (joints_program->uniformLocation("colorTexture") != -1) joints_program->setUniformValue("colorTexture", 0);
-        if (joints_program->uniformLocation("shadowMap") != -1) {
-            joints_program->setUniformValue("shadowMap", 2);
-            // TODO_shadowMapping: send the right transform here
-        }
-        joints_vao.bind();
-        GLenum err;
-        while ((err = glGetError()) != GL_NO_ERROR){
-          std::cout << "GL error: " << err << std::endl;
-        }
-        glDrawElements(GL_LINES,(j_numPoints-1)*2 , GL_UNSIGNED_INT, j_indices);
-        //glDrawElements(GL_TRIANGLES, 3 * m_numFaces, GL_UNSIGNED_INT, 0);
-        while ((err = glGetError()) != GL_NO_ERROR){
-          std::cout << "GL second error: " << err << std::endl;
-        }
-
-        //std::cout<<" numPoints : " <<j_numPoints<<std::endl;
-
-
-        for (int i =0 ; i < (j_numPoints-1)*2; i++ ){
-        //  std::cout<<" j_vertices : " <<(j_vertices)[i]<<std::endl;
-          std::cout<<" j_indices : " <<(j_indices)[i]<<std::endl;
-        }
-
-        for (int i =0 ; i < j_numPoints; i++ ){
-          std::cout<<" j_vertices : " <<(j_vertices)[i]<<std::endl;
-        }
-        /*
-        std::cout<<" j_normals : " <<(*j_normals)<<std::endl;
-        std::cout<<" j_colors : " <<(*j_colors)<<std::endl;
-        std::cout<<" j_indices : " <<(j_indices)[0]<<std::endl;
-        std::cout<<" j_numIndices : " <<(j_numIndices)<<std::endl;
-
-
-        joints_vao.release();
-        joints_program->release();
-
-    }*/
 }

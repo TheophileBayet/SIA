@@ -7,6 +7,7 @@
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QMatrix4x4>
+#include <QtGui/QVector4D>
 #include <QtGui/QOpenGLShaderProgram>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLBuffer>
@@ -56,6 +57,7 @@ public slots:
     void updateRefractions(int refractionsSliderValue);
     void updateInnerRadius(int innerRadiusSliderValue);
     void updateAnimating();
+    void updateJoints(Joint* root);
 
 protected:
     void mousePressEvent(QMouseEvent *e);
@@ -117,6 +119,9 @@ private:
     int *g2_indices;
     int g2_numPoints;
     int g2_numIndices;
+    Joint* root;
+    int frame;
+    trimesh::point *trn ;
     // Joints
     //TODO : adapter pour la lecture des joinst
     trimesh::point *j_vertices;
