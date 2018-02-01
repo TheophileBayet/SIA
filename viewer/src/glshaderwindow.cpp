@@ -511,9 +511,14 @@ int glShaderWindow::treeCount(Joint* root, int count){
   return count+1;
 }
 
-void glShaderWindow::treeConstruct(Joint* root){
-  std::vector<Joint*> child = root->_children;
+void glShaderWindow::treeConstruct(Joint* fath){
+  std::vector<Joint*> child = fath->_children;
   int curr = g2_numIndices;
+  QVector4D father = QVector4D();
+  father.setX((g2_vertices[curr])[0]);
+  father.setY((g2_vertices[curr])[1]);
+  father.setZ((g2_vertices[curr])[2]);
+  father.setW(1);
   QVector4D vec;
   for(int i = 0; i < child.size(); i ++){
     Joint* tmp = child[i];
@@ -528,11 +533,11 @@ void glShaderWindow::treeConstruct(Joint* root){
     g2_numIndices++;
 
     // Partie Matrices de Rotation pour animation
-
     rX.rotate(tmp->_curRx,1,0,0);
     rY.rotate(tmp->_curRy,0,1,0);
     rZ.rotate(tmp->_curRz,0,0,1);
-    switch(root->_rorder){
+  //  std::cout << " angle curRx : "<< tmp->_curRx  << "  from  : " << tmp->_name <<  std::endl;
+    switch(fath->_rorder){
       case 0 :
         M = rX*rY*rZ;
       break;
@@ -555,16 +560,18 @@ void glShaderWindow::treeConstruct(Joint* root){
         std::cout<< " Should not be there dude " << std::endl;
       break;
     }
-
-    rot[g2_numIndices]= rot[curr]*M;
     // Recuperation de l'offset pour pouvoir faire la transformation du point
     vec = QVector4D();
-    vec.setX(tmp->_offX);
-    vec.setY(tmp->_offY);
-    vec.setZ(tmp->_offZ);
-    vec.setW(0);
-    vec = rot[g2_numIndices] * vec ;
-    g2_vertices[g2_numIndices] += trimesh::point(vec.x(),vec.y(),vec.z(),vec.w());
+    vec.setX(tmp->_offX+tmp->_curTx);
+    vec.setY(tmp->_offY+tmp->_curTy);
+    vec.setZ(tmp->_offZ+tmp->_curTz);
+    vec.setW(1);
+    M.setColumn(3,vec);
+    rot[g2_numIndices]= rot[curr]*M;// multiplication par la transfo du père
+
+    // Ajout du vertice dans la liste
+    vec = rot[g2_numIndices] * father ;
+    g2_vertices[g2_numIndices] = trimesh::point(vec.x(),vec.y(),vec.z(),vec.w());
     // On réitère sur les fils
     treeConstruct(tmp);
   }
@@ -782,8 +789,18 @@ void glShaderWindow::bindSceneToProgram()
     trimesh::point center2 = modelMesh->bsphere.center+ trimesh::point(2,2,2,0);
     float radius2 = modelMesh->bsphere.r;
     // Allocate once, fill in for every new model.
+    if (!animating){
+      root = Joint::createFromFile("./viewer/animation/walk1.bvh");
+    }
+    // Vérification des angles
+    /*
+    std::vector<Joint*> child = root->_children;
+    while(child.size()!=0){
+      std::cout << " angle du fils parcouru ! " << child[0]->_curRx << std::endl;
+      child = child[0]->_children;
+    }*/
 
-    root = Joint::createFromFile("./viewer/animation/walk1.bvh");
+
     // Algorithme de parcours :
     // Tracer de current vers chacun des fils
     // Itérer sur les fils
@@ -822,6 +839,13 @@ void glShaderWindow::bindSceneToProgram()
         std::cout<< " Should not be there dude " << std::endl;
       break;
     }
+    QVector4D vec_tmp = QVector4D();
+    vec_tmp.setX(root->_offX+root->_curTx);
+    vec_tmp.setY(root->_offY+root->_curTy);
+    vec_tmp.setZ(root->_offZ+root->_curTz);
+    vec_tmp.setW(1);
+    M.setColumn(3,vec_tmp);
+
     trn[0]+=trimesh::point(root->_curTx,root->_curTy,root->_curTz,0);
     rot[0]=M;
     g2_vertices[0]=trimesh::point(root->_offX+(trn[0])[0],root->_offY+(trn[0])[1],root->_offZ+(trn[0])[2],1);
@@ -1492,12 +1516,18 @@ void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 void glShaderWindow::keyPressEvent(QKeyEvent* e)
 {
     int key = e->key();
+    //std::vector<Joint*> child2 = root->_children;
     switch (key)
     {
         case Qt::Key_Space:
             // Il faudra actualiser les matrices de position ici
             animating = true;
             root->animate(frame);
+            /*
+            while(child2.size()!=0){
+              std::cout << " angle du fils parcouru ! " << child2[0]->_curRx << " from : " << child2[0]->_name << std::endl;
+              child2 = child2[0]->_children;
+            }*/
             frame++;
             toggleAnimating();
             break;
