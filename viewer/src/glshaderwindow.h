@@ -122,12 +122,7 @@ private:
     Joint* root;
     // animation
     int frame;
-    trimesh::point *trn ;
-    QMatrix4x4 *rot ;
-    QMatrix4x4 M;
-    QMatrix4x4 rX;
-    QMatrix4x4 rY;
-    QMatrix4x4 rZ;
+    QMatrix4x4 *rot;
     // Joints
     //TODO : adapter pour la lecture des joinst
     trimesh::point *j_vertices;

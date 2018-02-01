@@ -26,7 +26,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
     : OpenGLWindow(parent), modelMesh(0),
       m_program(0), ground_program(0), ground2_program(0), joints_program(0), compute_program(0), shadowMapGenerationProgram(0),
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
-      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),frame(0),trn(0),rot(0),
+      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),frame(0),rot(0),
       j_vertices(0), j_colors(0),j_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
@@ -523,7 +523,7 @@ void glShaderWindow::treeConstruct(Joint* fath){
   for(int i = 0; i < child.size(); i ++){
     Joint* tmp = child[i];
     // Remplir les buffer avec les valeurs de base :
-    trn[g2_numIndices+1]+=trimesh::point(tmp->_curTx,tmp->_curTy,tmp->_curTz,0);
+    //trn[g2_numIndices+1]+=trimesh::point(tmp->_curTx,tmp->_curTy,tmp->_curTz,0);
     g2_vertices[g2_numIndices+1]=trimesh::point((g2_vertices[curr])[0],(g2_vertices[curr])[1],(g2_vertices[curr])[2],1);
     g2_colors[g2_numIndices+1] = trimesh::point(1, 0, 0, 1);
     g2_normals[g2_numIndices+1]=trimesh::point(0,1,0,0);
@@ -533,9 +533,13 @@ void glShaderWindow::treeConstruct(Joint* fath){
     g2_numIndices++;
 
     // Partie Matrices de Rotation pour animation
+    QMatrix4x4 rX;
     rX.rotate(tmp->_curRx,1,0,0);
+    QMatrix4x4 rY;
     rY.rotate(tmp->_curRy,0,1,0);
+    QMatrix4x4 rZ;
     rZ.rotate(tmp->_curRz,0,0,1);
+    QMatrix4x4 M;
   //  std::cout << " angle curRx : "<< tmp->_curRx  << "  from  : " << tmp->_name <<  std::endl;
     switch(fath->_rorder){
       case 0 :
@@ -561,16 +565,20 @@ void glShaderWindow::treeConstruct(Joint* fath){
       break;
     }
     // Recuperation de l'offset pour pouvoir faire la transformation du point
-    vec = QVector4D();
-    vec.setX(tmp->_offX+tmp->_curTx);
-    vec.setY(tmp->_offY+tmp->_curTy);
-    vec.setZ(tmp->_offZ+tmp->_curTz);
-    vec.setW(1);
-    M.setColumn(3,vec);
+    // vec = QVector4D();
+    // vec.setX(tmp->_offX+tmp->_curTx);
+    // vec.setY(tmp->_offY+tmp->_curTy);
+    // vec.setZ(tmp->_offZ+tmp->_curTz);
+    // vec.setW(1);
+    // M.setColumn(3,vec);
+    QMatrix4x4 T;
+    T.translate(tmp->_offX+tmp->_curTx,tmp->_offY+tmp->_curTy,tmp->_offZ+tmp->_curTz);
+    M = T*M;
     rot[g2_numIndices]= rot[curr]*M;// multiplication par la transfo du père
 
     // Ajout du vertice dans la liste
-    vec = rot[g2_numIndices] * father ;
+    QVector4D origin = QVector4D(0,0,0,1);
+    vec = rot[g2_numIndices] * origin;
     g2_vertices[g2_numIndices] = trimesh::point(vec.x(),vec.y(),vec.z(),vec.w());
     // On réitère sur les fils
     treeConstruct(tmp);
@@ -810,12 +818,16 @@ void glShaderWindow::bindSceneToProgram()
     if (g2_colors == 0) g2_colors = new trimesh::point[g2_numPoints];
     if (g2_texcoords == 0) g2_texcoords = new trimesh::vec2[g2_numPoints];
     if (g2_indices == 0) g2_indices = new int[(g2_numPoints-1)*2];
-    if (trn == 0) trn = new trimesh::point[g2_numPoints];
+    //if (trn == 0) trn = new trimesh::point[g2_numPoints];
     if(rot==0) rot = new QMatrix4x4[g2_numPoints];
     g2_numIndices=0;
+    QMatrix4x4 rX;
     rX.rotate(root->_curRx,1,0,0);
+    QMatrix4x4 rY;
     rY.rotate(root->_curRy,0,1,0);
+    QMatrix4x4 rZ;
     rZ.rotate(root->_curRz,0,0,1);
+    QMatrix4x4 M;
     switch(root->_rorder){
       case 0 :
         M = rX*rY*rZ;
@@ -839,21 +851,16 @@ void glShaderWindow::bindSceneToProgram()
         std::cout<< " Should not be there dude " << std::endl;
       break;
     }
-    QVector4D vec_tmp = QVector4D();
-    vec_tmp.setX(root->_offX+root->_curTx);
-    vec_tmp.setY(root->_offY+root->_curTy);
-    vec_tmp.setZ(root->_offZ+root->_curTz);
-    vec_tmp.setW(1);
-    M.setColumn(3,vec_tmp);
-
-    trn[0]+=trimesh::point(root->_curTx,root->_curTy,root->_curTz,0);
+    QMatrix4x4 T;
+    T.translate(root->_offX+root->_curTx,root->_offY+root->_curTy);
+    M = T*M;
     rot[0]=M;
-    g2_vertices[0]=trimesh::point(root->_offX+(trn[0])[0],root->_offY+(trn[0])[1],root->_offZ+(trn[0])[2],1);
-    g2_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
+    g2_vertices[0]=trimesh::point(root->_offX,root->_offY,root->_offZ,1);
+    g2_colors[0] = trimesh::point(1.0, 0.0, 0.0, 1);
     g2_normals[0]= trimesh::point(0,1,0,0);
     g2_texcoords[0]= trimesh::vec2(0,0);
     treeConstruct(root);
-    ground2_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_vertexBuffer.setUsagePattern(QOpenGLBuffer::DynamicDraw);
     ground2_vertexBuffer.bind();
     ground2_vertexBuffer.allocate(g2_vertices, g2_numPoints * sizeof(trimesh::point));
     ground2_normalBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
@@ -1761,7 +1768,7 @@ void glShaderWindow::render()
           std::cout << "GL error: " << err << std::endl;
         }
 
-        int nb_arrete = ((g2_numPoints-1)*2);
+        int nb_arrete = ((g2_numIndices)*2);
         glDrawElements(GL_LINES, nb_arrete, GL_UNSIGNED_INT, 0);
 
         while ((err = glGetError()) != GL_NO_ERROR){
@@ -1772,7 +1779,8 @@ void glShaderWindow::render()
 
         if(animating){
           //std::cout<< "animating" << std::endl;
-          g2_numIndices = 0 ;
+          g2_numIndices = 0;
+
           updateJoints(root);
           bindSceneToProgram();
           animating = false;
