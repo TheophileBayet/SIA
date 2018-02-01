@@ -24,14 +24,15 @@
 glShaderWindow::glShaderWindow(QWindow *parent)
 // Initialize obvious default values here (e.g. 0 for pointers)
     : OpenGLWindow(parent), modelMesh(0),
-      m_program(0), ground_program(0), joints_program(0), compute_program(0), shadowMapGenerationProgram(0),
+      m_program(0), ground_program(0), ground2_program(0), joints_program(0), compute_program(0), shadowMapGenerationProgram(0),
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
-      j_vertices(0), j_normals(0), j_texcoords(0), j_colors(0), j_indices(0),
+      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),
+      j_vertices(0), j_colors(0),j_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
       isGPGPU(false),isSkeleton(false), hasComputeShaders(false), blinnPhong(true), transparent(true),lightning(true),bubble(false), eta(QVector2D(1.5,2.0)), lightIntensity(1.0f),refractions(5),innerRadius(0.98), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0),animating(false),animation_time(0), fullScreenSnapshots(false),
-      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), joints_indexBuffer(QOpenGLBuffer::IndexBuffer)
+      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), ground2_indexBuffer(QOpenGLBuffer::IndexBuffer), joints_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
     // Default values you might want to tinker with
     shadowMapDimension = 2048;
@@ -54,6 +55,10 @@ glShaderWindow::~glShaderWindow()
     if (ground_program) {
         ground_program->release();
         delete ground_program;
+    }
+    if (ground2_program) {
+        ground2_program->release();
+        delete ground2_program;
     }
     if(joints_program) {
       joints_program-> release();
@@ -95,6 +100,19 @@ glShaderWindow::~glShaderWindow()
     ground_texcoordBuffer.destroy();
     ground_vao.release();
     ground_vao.destroy();
+
+    ground2_vertexBuffer.release();
+    ground2_vertexBuffer.destroy();
+    ground2_indexBuffer.release();
+    ground2_indexBuffer.destroy();
+    ground2_colorBuffer.release();
+    ground2_colorBuffer.destroy();
+    ground2_normalBuffer.release();
+    ground2_normalBuffer.destroy();
+    ground2_texcoordBuffer.release();
+    ground2_texcoordBuffer.destroy();
+    ground2_vao.release();
+    ground2_vao.destroy();
     joints_vertexBuffer.release();
     joints_vertexBuffer.destroy();
     joints_indexBuffer.release();
@@ -111,9 +129,12 @@ glShaderWindow::~glShaderWindow()
     if (g_colors) delete [] g_colors;
     if (g_normals) delete [] g_normals;
     if (g_indices) delete [] g_indices;
+    if (g2_vertices) delete [] g2_vertices;
+    if (g2_colors) delete [] g2_colors;
+    if (g2_normals) delete [] g2_normals;
+    if (g2_indices) delete [] g2_indices;
     if (j_vertices) delete [] j_vertices;
     if (j_colors) delete [] j_colors;
-    if (j_normals) delete [] j_normals;
     if (j_indices) delete [] j_indices;
     if (gpgpu_vertices) delete [] gpgpu_vertices;
     if (gpgpu_colors) delete [] gpgpu_colors;
@@ -477,16 +498,16 @@ int glShaderWindow::treeCount(Joint* root, int count){
 
 void glShaderWindow::treeConstruct(Joint* root){
   std::vector<Joint*> child = root->_children;
-  int curr = j_numIndices;
+  int curr = g2_numIndices;
   for(int i = 0; i < child.size(); i ++){
     Joint* tmp = child[i];
-    j_vertices[j_numIndices]=trimesh::point(tmp->_offX,tmp->_offY,tmp->_offZ,0);
-    j_normals[j_numIndices ] = trimesh::point(0, 1, 0, 0);
-    j_colors[j_numIndices] = trimesh::point(0.6, 0.85, 0.9, 1);
-    j_texcoords[j_numIndices] = trimesh::vec2(0,0);
-    j_indices[(j_numIndices-1)*2] = curr;
-    j_indices[(j_numIndices-1)*2+1] = j_numIndices;
-    j_numIndices++;
+    g2_vertices[g2_numIndices+1]=trimesh::point((g2_vertices[curr])[0]+tmp->_offX,(g2_vertices[curr])[1]+tmp->_offY,(g2_vertices[curr])[2]+tmp->_offZ,1);
+    g2_colors[g2_numIndices+1] = trimesh::point(1, 0, 0, 1);
+    g2_normals[g2_numIndices+1]=trimesh::point(0,1,0,0);
+    g2_texcoords[g2_numIndices+1]=trimesh::vec2(0,0);
+    g2_indices[(g2_numIndices)*2] = curr;
+    g2_numIndices++;
+    g2_indices[(g2_numIndices-1)*2+1] = g2_numIndices;
     treeConstruct(tmp);
   }
 }
@@ -693,56 +714,116 @@ void glShaderWindow::bindSceneToProgram()
     ground_program->release();
     ground_vao.release();
 
-    // bind joints to programm :
 
-    joints_vao.bind();
+
+// Bind ground2 VAO to ground2 program as well
+    // We create a VAO for the ground2 from scratch
+    ground2_vao.bind();
+    ground2_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_vertexBuffer.bind();
+    trimesh::point center2 = modelMesh->bsphere.center+ trimesh::point(2,2,2,0);
+    float radius2 = modelMesh->bsphere.r;
+    // Allocate once, fill in for every new model.
+
     Joint* root = Joint::createFromFile("./viewer/animation/walk1.bvh");
     // Algorithme de parcours :
     // Tracer de current vers chacun des fils
     // Itérer sur les fils
-    j_numPoints=treeCount(root,0);
-    if (j_vertices == 0) j_vertices = new trimesh::point[j_numPoints];
-    if (j_normals == 0) j_normals = new trimesh::vec[j_numPoints];
-    if (j_colors == 0) j_colors = new trimesh::point[j_numPoints];
-    if (j_texcoords == 0) j_texcoords = new trimesh::vec2[j_numPoints];
-    if (j_indices == 0) j_indices = new int[(j_numPoints-1)*2];
-    j_numIndices=1;
-    j_vertices[0]=trimesh::point(root->_offX,root->_offY,root->_offZ,1);
-    j_normals[0]=trimesh::point(0,1,0,0);
-    j_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
-    j_texcoords[0] = trimesh::vec2(0,0);
+    g2_numPoints=treeCount(root,0);
+    if (g2_vertices == 0) g2_vertices = new trimesh::point[g2_numPoints];
+    if (g2_normals == 0) g2_normals = new trimesh::vec[g2_numPoints];
+    if (g2_colors == 0) g2_colors = new trimesh::point[g2_numPoints];
+    if (g2_texcoords == 0) g2_texcoords = new trimesh::vec2[g2_numPoints];
+    if (g2_indices == 0) g2_indices = new int[(g2_numPoints-1)*2];
+    g2_numIndices=0;
+    g2_vertices[0]=trimesh::point(root->_offX,root->_offY,root->_offZ,1);
+    g2_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
+    g2_normals[0]= trimesh::point(0,1,0,0);
+    g2_texcoords[0]= trimesh::vec2(0,0);
     treeConstruct(root);
+    ground2_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_vertexBuffer.bind();
+    ground2_vertexBuffer.allocate(g2_vertices, g2_numPoints * sizeof(trimesh::point));
+    ground2_normalBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_normalBuffer.bind();
+    ground2_normalBuffer.allocate(g2_normals, g2_numPoints * sizeof(trimesh::vec));
+    ground2_colorBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_colorBuffer.bind();
+    ground2_colorBuffer.allocate(g2_colors, g2_numPoints * sizeof(trimesh::point));
+    ground2_texcoordBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_texcoordBuffer.bind();
+    ground2_texcoordBuffer.allocate(g2_texcoords, g2_numPoints * sizeof(trimesh::vec2));
+    ground2_indexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    ground2_indexBuffer.bind();
+    ground2_indexBuffer.allocate(g2_indices, (g2_numPoints-1)*2 * sizeof(int));
+
+    ground2_program->bind();
+    ground2_vertexBuffer.bind();
+    ground2_program->setAttributeBuffer( "vertex", GL_FLOAT, 0, 4 );
+    ground2_program->enableAttributeArray( "vertex" );
+    ground2_colorBuffer.bind();
+    ground2_program->setAttributeBuffer( "color", GL_FLOAT, 0, 4 );
+    ground2_program->enableAttributeArray( "color" );
+    ground2_normalBuffer.bind();
+    ground2_program->setAttributeBuffer( "normal", GL_FLOAT, 0, 4 );
+    ground2_program->enableAttributeArray( "normal" );
+    ground2_program->setUniformValue("noColor", false);
+    ground2_texcoordBuffer.bind();
+    ground2_program->setAttributeBuffer( "texcoords", GL_FLOAT, 0, 2 );
+    ground2_program->enableAttributeArray( "texcoords" );
+    ground2_program->release();
+    // Also bind the ground2 to the shadow mapping program:
+    shadowMapGenerationProgram->bind();
+    ground2_vertexBuffer.bind();
+    shadowMapGenerationProgram->setAttributeBuffer( "vertex", GL_FLOAT, 0, 4 );
+    shadowMapGenerationProgram->enableAttributeArray( "vertex" );
+    shadowMapGenerationProgram->release();
+    ground2_colorBuffer.bind();
+    shadowMapGenerationProgram->setAttributeBuffer( "color", GL_FLOAT, 0, 4 );
+    shadowMapGenerationProgram->enableAttributeArray( "color" );
+    ground2_normalBuffer.bind();
+    shadowMapGenerationProgram->setAttributeBuffer( "normal", GL_FLOAT, 0, 4 );
+    shadowMapGenerationProgram->enableAttributeArray( "normal" );
+    ground2_texcoordBuffer.bind();
+    shadowMapGenerationProgram->setAttributeBuffer( "texcoords", GL_FLOAT, 0, 2 );
+    shadowMapGenerationProgram->enableAttributeArray( "texcoords" );
+    ground2_program->release();
+    ground2_vao.release();
+
+/*
+    // bind joints to programm :
+
+    joints_vao.bind();
+    Joint* root2 = Joint::createFromFile("./viewer/animation/walk1.bvh");
+    // Algorithme de parcours :
+    // Tracer de current vers chacun des fils
+    // Itérer sur les fils
+    j_numPoints=treeCount(root2,0);
+    if (j_vertices == 0) j_vertices = new trimesh::point[j_numPoints];
+    if (j_colors == 0) j_colors = new trimesh::point[j_numPoints];
+    if (j_indices == 0) j_indices = new int[(j_numPoints-1)*2];
+    j_numIndices=0;
+    j_vertices[0]=trimesh::point(root2->_offX,root2->_offY,root2->_offZ,1);
+    j_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
+    treeConstruct(root2);
     joints_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
     joints_vertexBuffer.bind();
     joints_vertexBuffer.allocate(j_vertices, j_numPoints * sizeof(trimesh::point));
     joints_indexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
     joints_indexBuffer.bind();
     joints_indexBuffer.allocate(j_indices, j_numIndices * sizeof(int));
-    joints_normalBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    joints_normalBuffer.bind();
-    joints_normalBuffer.allocate(j_normals, j_numPoints * sizeof(trimesh::vec));
     joints_colorBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
     joints_colorBuffer.bind();
     joints_colorBuffer.allocate(j_colors, j_numPoints * sizeof(trimesh::point));
-    joints_texcoordBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    joints_texcoordBuffer.bind();
-    joints_texcoordBuffer.allocate(j_texcoords, j_numPoints * sizeof(trimesh::vec2));
     joints_program->bind();
     joints_vertexBuffer.bind();
     joints_program->setAttributeBuffer("vertex",GL_FLOAT,0,4);
     joints_program->enableAttributeArray("vertex");
-    joints_normalBuffer.bind();
-    joints_program->setAttributeBuffer("normal",GL_FLOAT,0,4);
-    joints_program->enableAttributeArray("normal");
     joints_colorBuffer.bind();
     joints_program->setAttributeBuffer("color",GL_FLOAT,0,4);
     joints_program->enableAttributeArray("color");
     joints_program->setUniformValue("noColor", false);
-    joints_texcoordBuffer.bind();
-    joints_program->setAttributeBuffer( "texcoords", GL_FLOAT, 0, 2 );
-    joints_program->enableAttributeArray( "texcoords" );
-    joints_program->release();
-    joints_vao.release();
+    joints_vao.release();*/
 }
 
 void glShaderWindow::initializeTransformForScene()
@@ -942,7 +1023,7 @@ void glShaderWindow::loadTexturesForShaders() {
     // }
 	// Load textures as required by the shader.
   // if ((m_program->uniformLocation("colorTexture") != -1) ) {
-	if ((m_program->uniformLocation("colorTexture") != -1) || (ground_program->uniformLocation("colorTexture") != -1) || (joints_program->uniformLocation("colorTexture") != -1)) {
+	if ((m_program->uniformLocation("colorTexture") != -1) || (ground_program->uniformLocation("colorTexture") != -1) || (ground2_program->uniformLocation("colorTexture") != -1) || (joints_program->uniformLocation("colorTexture") != -1)) {
 		glActiveTexture(GL_TEXTURE0);
         // the shader wants a texture. We load one.
         texture = new QOpenGLTexture(QImage(textureName));
@@ -992,6 +1073,7 @@ void glShaderWindow::loadTexturesForShaders() {
             computeResult->bind(2);
         }
     } else if ((ground_program->uniformLocation("shadowMap") != -1)
+        || (ground2_program->uniformLocation("shadowMap") != -1)
     		|| (m_program->uniformLocation("shadowMap") != -1)
         || (joints_program->uniformLocation("shadowMap") != -1) ){
     	// without Qt functions this time
@@ -1062,6 +1144,11 @@ void glShaderWindow::initialize()
         delete(ground_program);
     }
     ground_program = prepareShaderProgram(shaderPath + "3_textured.vert", shaderPath + "3_textured.frag");
+    if (ground2_program) {
+        ground2_program->release();
+        delete(ground2_program);
+    }
+    ground2_program = prepareShaderProgram(shaderPath + "3_textured.vert", shaderPath + "3_textured.frag");
     if(joints_program) {
       joints_program -> release();
       delete(joints_program);
@@ -1094,6 +1181,17 @@ void glShaderWindow::initialize()
     ground_normalBuffer.create();
     ground_texcoordBuffer.create();
     ground_vao.release();
+
+    // DEUXIEME
+    ground2_vao.create();
+    ground2_vao.bind();
+    ground2_vertexBuffer.create();
+    ground2_indexBuffer.create();
+    ground2_colorBuffer.create();
+    ground2_normalBuffer.create();
+    ground2_texcoordBuffer.create();
+    ground2_vao.release();
+
 
     // Partie des joints
     joints_vao.create();
@@ -1393,7 +1491,7 @@ void glShaderWindow::render()
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         compute_program->release();
 #endif
-	} else if ((ground_program->uniformLocation("shadowMap") != -1) || (m_program->uniformLocation("shadowMap") != -1) || (joints_program->uniformLocation("shadowMap") != -1) ){
+	} else if ((ground_program->uniformLocation("shadowMap") != -1) ||(ground2_program->uniformLocation("shadowMap") != -1) || (m_program->uniformLocation("shadowMap") != -1) || (joints_program->uniformLocation("shadowMap") != -1) ){
 		glActiveTexture(GL_TEXTURE2);
         // The program uses a shadow map, let's compute it.
 		glBindFramebuffer(GL_FRAMEBUFFER, shadowMap_fboId);
@@ -1401,7 +1499,7 @@ void glShaderWindow::render()
         // Render into shadow Map
         shadowMapGenerationProgram->bind();
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
-        glDisable(GL_CULL_FACE); // mainly because some models intersect with the ground
+        glDisable(GL_CULL_FACE); // mainly because some models intersect with the gronud
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // set up camera position in light source:
         // TODO_shadowMapping: you must initialize these two matrices.
@@ -1417,6 +1515,9 @@ void glShaderWindow::render()
         ground_vao.bind();
         glDrawElements(GL_TRIANGLES, g_numIndices, GL_UNSIGNED_INT, 0);
         ground_vao.release();
+        ground2_vao.bind();
+        glDrawElements(GL_TRIANGLES, g2_numIndices, GL_UNSIGNED_INT, 0);
+        ground2_vao.release();
         joints_vao.bind();
         glDrawElements(GL_LINES,j_numIndices,GL_UNSIGNED_INT,0);
         joints_vao.release();
@@ -1503,11 +1604,66 @@ void glShaderWindow::render()
             // TODO_shadowMapping: send the right transform here
         }
         ground_vao.bind();
-        glDrawElements(GL_TRIANGLES, g_numIndices, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINES, g_numIndices, GL_UNSIGNED_INT, 0);
         ground_vao.release();
         ground_program->release();
     }
 
+    if (!isGPGPU) {
+        // also draw the ground2, with a different shader program
+        ground2_program->bind();
+        ground2_program->setUniformValue("lightPosition", lightPosition);
+        ground2_program->setUniformValue("matrix", m_matrix[0]);
+        ground2_program->setUniformValue("lightMatrix", m_matrix[1]);
+        ground2_program->setUniformValue("perspective", m_perspective);
+        ground2_program->setUniformValue("normalMatrix", m_matrix[0].normalMatrix());
+        ground2_program->setUniformValue("lightIntensity", 1.0f);
+        ground2_program->setUniformValue("blinnPhong", blinnPhong);
+        ground2_program->setUniformValue("transparent", transparent);
+        ground2_program->setUniformValue("bubble", bubble);
+        ground2_program->setUniformValue("lightning", lightning);
+        ground2_program->setUniformValue("animating", animating);
+        ground2_program->setUniformValue("animation_time", animation_time);
+        ground2_program->setUniformValue("lightIntensity", lightIntensity);
+        ground2_program->setUniformValue("refractions", refractions);
+        ground2_program->setUniformValue("innerRadius", innerRadius);
+        ground2_program->setUniformValue("shininess", shininess);
+        ground2_program->setUniformValue("eta", eta);
+        // ground2_program->setUniformValue("eta.y", eta.y);
+        ground2_program->setUniformValue("radius", modelMesh->bsphere.r);
+		if (ground2_program->uniformLocation("colorTexture") != -1) ground2_program->setUniformValue("colorTexture", 0);
+        if (ground2_program->uniformLocation("shadowMap") != -1) {
+            ground2_program->setUniformValue("shadowMap", 2);
+            // TODO_shadowMapping: send the right transform here
+        }
+        ground2_vao.bind();
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR){
+          std::cout << "GL error: " << err << std::endl;
+        }
+
+        int nb_arrete = ((g2_numPoints-1)*2);
+        glDrawElements(GL_LINES, nb_arrete, GL_UNSIGNED_INT, 0);
+
+        while ((err = glGetError()) != GL_NO_ERROR){
+          std::cout << "GL error: " << err << std::endl;
+        }
+
+        // Affichage des variables pour recherche
+        for (int i =0 ; i < g2_numPoints; i++ ){
+          std::cout<<" g_vertices : " <<(g2_vertices)[i]<<std::endl;
+        }
+        std::cout<<" numPoints : " <<g2_numPoints<<std::endl;
+        for (int i =0 ; i < (g2_numPoints-1)*2; i++ ){
+          std::cout<<" g2_indices : " <<(g2_indices)[i]<<std::endl;
+        }
+        std::cout<<" g2_numIndices : " <<g2_numIndices<<std::endl;
+        std::cout<<" g2_numPoints : " <<g2_numPoints<<std::endl;
+        std::cout<<" nb_arrete : " <<nb_arrete<<std::endl;
+        ground2_vao.release();
+        ground2_program->release();
+    }
+    /*
     if (isSkeleton ) {
         // also draw the joints, with a different shader program
         joints_program->bind();
@@ -1530,7 +1686,7 @@ void glShaderWindow::render()
         joints_program->setUniformValue("eta", eta);
         // joints_program->setUniformValue("eta.y", eta.y);
         joints_program->setUniformValue("radius", modelMesh->bsphere.r);
-		if (joints_program->uniformLocation("colorTexture") != -1) joints_program->setUniformValue("colorTexture", 0);
+        if (joints_program->uniformLocation("colorTexture") != -1) joints_program->setUniformValue("colorTexture", 0);
         if (joints_program->uniformLocation("shadowMap") != -1) {
             joints_program->setUniformValue("shadowMap", 2);
             // TODO_shadowMapping: send the right transform here
@@ -1541,31 +1697,31 @@ void glShaderWindow::render()
           std::cout << "GL error: " << err << std::endl;
         }
         glDrawElements(GL_LINES,(j_numPoints-1)*2 , GL_UNSIGNED_INT, j_indices);
-
+        //glDrawElements(GL_TRIANGLES, 3 * m_numFaces, GL_UNSIGNED_INT, 0);
         while ((err = glGetError()) != GL_NO_ERROR){
           std::cout << "GL second error: " << err << std::endl;
         }
 
         //std::cout<<" numPoints : " <<j_numPoints<<std::endl;
 
-        /*
+
+        for (int i =0 ; i < (j_numPoints-1)*2; i++ ){
+        //  std::cout<<" j_vertices : " <<(j_vertices)[i]<<std::endl;
+          std::cout<<" j_indices : " <<(j_indices)[i]<<std::endl;
+        }
+
         for (int i =0 ; i < j_numPoints; i++ ){
           std::cout<<" j_vertices : " <<(j_vertices)[i]<<std::endl;
         }
-        */
         /*
         std::cout<<" j_normals : " <<(*j_normals)<<std::endl;
         std::cout<<" j_colors : " <<(*j_colors)<<std::endl;
         std::cout<<" j_indices : " <<(j_indices)[0]<<std::endl;
-        */
+        std::cout<<" j_numIndices : " <<(j_numIndices)<<std::endl;
+
 
         joints_vao.release();
         joints_program->release();
-        m_program->bind();
-        m_vao.bind();
-        glDrawElements(GL_LINES,(j_numPoints-1)*2 , GL_UNSIGNED_INT, j_indices);
-        m_vao.release();
-        m_program->release();
 
-    }
+    }*/
 }

@@ -109,11 +109,17 @@ private:
     int *g_indices;
     int g_numPoints;
     int g_numIndices;
+    // DEUXIEME GROUND2
+    trimesh::point *g2_vertices;
+    trimesh::vec *g2_normals;
+    trimesh::vec2 *g2_texcoords;
+    trimesh::point *g2_colors;
+    int *g2_indices;
+    int g2_numPoints;
+    int g2_numIndices;
     // Joints
     //TODO : adapter pour la lecture des joinst
     trimesh::point *j_vertices;
-    trimesh::vec *j_normals;
-    trimesh::vec2 *j_texcoords;
     trimesh::point *j_colors;
     int *j_indices;
     int j_numPoints;
@@ -145,6 +151,7 @@ private:
     // OpenGL variables encapsulated by Qt
     QOpenGLShaderProgram *m_program;
     QOpenGLShaderProgram *ground_program;
+    QOpenGLShaderProgram *ground2_program;
     QOpenGLShaderProgram *compute_program;
     QOpenGLShaderProgram *shadowMapGenerationProgram;
     QOpenGLShaderProgram *joints_program;
@@ -170,6 +177,13 @@ private:
     QOpenGLBuffer ground_normalBuffer;
     QOpenGLBuffer ground_colorBuffer;
     QOpenGLBuffer ground_texcoordBuffer;
+    // DEUXIEME ground2
+    QOpenGLVertexArrayObject ground2_vao;
+    QOpenGLBuffer ground2_vertexBuffer;
+    QOpenGLBuffer ground2_indexBuffer;
+    QOpenGLBuffer ground2_normalBuffer;
+    QOpenGLBuffer ground2_colorBuffer;
+    QOpenGLBuffer ground2_texcoordBuffer;
     // Joints
     QOpenGLVertexArrayObject joints_vao;
     QOpenGLBuffer joints_vertexBuffer;
