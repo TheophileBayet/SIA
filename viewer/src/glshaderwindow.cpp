@@ -300,7 +300,7 @@ void glShaderWindow::updateAnimating()
   setAnimating(animating);
 }
 
-void glShaderWindow::updateJoints(Joint* root){
+void glShaderWindow::updateJoints(Joint* fath){
   /*
   std::vector<Joint*> child = root->_children;
   trimesh::point trans = trimesh::point(root->_curTx,root->_curTy,root->_curTz,0);
@@ -565,12 +565,6 @@ void glShaderWindow::treeConstruct(Joint* fath){
       break;
     }
     // Recuperation de l'offset pour pouvoir faire la transformation du point
-    // vec = QVector4D();
-    // vec.setX(tmp->_offX+tmp->_curTx);
-    // vec.setY(tmp->_offY+tmp->_curTy);
-    // vec.setZ(tmp->_offZ+tmp->_curTz);
-    // vec.setW(1);
-    // M.setColumn(3,vec);
     QMatrix4x4 T;
     T.translate(tmp->_offX+tmp->_curTx,tmp->_offY+tmp->_curTy,tmp->_offZ+tmp->_curTz);
     M = T*M;
@@ -800,14 +794,6 @@ void glShaderWindow::bindSceneToProgram()
     if (!animating){
       root = Joint::createFromFile("./viewer/animation/walk1.bvh");
     }
-    // Vérification des angles
-    /*
-    std::vector<Joint*> child = root->_children;
-    while(child.size()!=0){
-      std::cout << " angle du fils parcouru ! " << child[0]->_curRx << std::endl;
-      child = child[0]->_children;
-    }*/
-
 
     // Algorithme de parcours :
     // Tracer de current vers chacun des fils
@@ -818,7 +804,6 @@ void glShaderWindow::bindSceneToProgram()
     if (g2_colors == 0) g2_colors = new trimesh::point[g2_numPoints];
     if (g2_texcoords == 0) g2_texcoords = new trimesh::vec2[g2_numPoints];
     if (g2_indices == 0) g2_indices = new int[(g2_numPoints-1)*2];
-    //if (trn == 0) trn = new trimesh::point[g2_numPoints];
     if(rot==0) rot = new QMatrix4x4[g2_numPoints];
     g2_numIndices=0;
     QMatrix4x4 rX;
@@ -908,41 +893,6 @@ void glShaderWindow::bindSceneToProgram()
     shadowMapGenerationProgram->enableAttributeArray( "texcoords" );
     ground2_program->release();
     ground2_vao.release();
-
-/*
-    // bind joints to programm :
-
-    joints_vao.bind();
-    Joint* root2 = Joint::createFromFile("./viewer/animation/walk1.bvh");
-    // Algorithme de parcours :
-    // Tracer de current vers chacun des fils
-    // Itérer sur les fils
-    j_numPoints=treeCount(root2,0);
-    if (j_vertices == 0) j_vertices = new trimesh::point[j_numPoints];
-    if (j_colors == 0) j_colors = new trimesh::point[j_numPoints];
-    if (j_indices == 0) j_indices = new int[(j_numPoints-1)*2];
-    j_numIndices=0;
-    j_vertices[0]=trimesh::point(root2->_offX,root2->_offY,root2->_offZ,1);
-    j_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
-    treeConstruct(root2);
-    joints_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    joints_vertexBuffer.bind();
-    joints_vertexBuffer.allocate(j_vertices, j_numPoints * sizeof(trimesh::point));
-    joints_indexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    joints_indexBuffer.bind();
-    joints_indexBuffer.allocate(j_indices, j_numIndices * sizeof(int));
-    joints_colorBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    joints_colorBuffer.bind();
-    joints_colorBuffer.allocate(j_colors, j_numPoints * sizeof(trimesh::point));
-    joints_program->bind();
-    joints_vertexBuffer.bind();
-    joints_program->setAttributeBuffer("vertex",GL_FLOAT,0,4);
-    joints_program->enableAttributeArray("vertex");
-    joints_colorBuffer.bind();
-    joints_program->setAttributeBuffer("color",GL_FLOAT,0,4);
-    joints_program->enableAttributeArray("color");
-    joints_program->setUniformValue("noColor", false);
-    joints_vao.release();*/
 }
 
 void glShaderWindow::initializeTransformForScene()
@@ -1427,8 +1377,6 @@ void glShaderWindow::mousePressEvent(QMouseEvent *e)
     if (isFullrt){
         changeShader = true;
         setShader("2_phong");
-        // animating = true;
-        // updateAnimating();
     }
     mouseButton = e->button();
 }
@@ -1439,7 +1387,6 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
         changeShader = true;
         setShader("2_phong");
         usedWheel=true;
-        // setAnimating(true);
     }
     int matrixMoving = 0;
     if (ev->modifiers() & Qt::ShiftModifier) matrixMoving = 1;
@@ -1456,10 +1403,6 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
         groundDistance += 0.1 * numDegrees.y();
     }
     renderNow();
-    // if (changeShader){
-    //     setShader("gpgpu_fullrt");
-    //     changeShader = false;
-    // }
 }
 
 void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
@@ -1468,7 +1411,6 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
         changeShader = false;
         setShader("gpgpu_fullrt");
         usedWheel = false;
-        // setAnimating(false);
     }
     if (mouseButton == Qt::NoButton) return;
     QVector2D mousePosition = (2.0/m_screenSize) * (QVector2D(e->localPos()) - QVector2D(0.5 * width(), 0.5*height()));
@@ -1523,18 +1465,11 @@ void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 void glShaderWindow::keyPressEvent(QKeyEvent* e)
 {
     int key = e->key();
-    //std::vector<Joint*> child2 = root->_children;
     switch (key)
     {
         case Qt::Key_Space:
-            // Il faudra actualiser les matrices de position ici
             animating = true;
             root->animate(frame);
-            /*
-            while(child2.size()!=0){
-              std::cout << " angle du fils parcouru ! " << child2[0]->_curRx << " from : " << child2[0]->_name << std::endl;
-              child2 = child2[0]->_children;
-            }*/
             frame++;
             toggleAnimating();
             break;
@@ -1755,30 +1690,23 @@ void glShaderWindow::render()
         ground2_program->setUniformValue("innerRadius", innerRadius);
         ground2_program->setUniformValue("shininess", shininess);
         ground2_program->setUniformValue("eta", eta);
-        // ground2_program->setUniformValue("eta.y", eta.y);
         ground2_program->setUniformValue("radius", modelMesh->bsphere.r);
 		if (ground2_program->uniformLocation("colorTexture") != -1) ground2_program->setUniformValue("colorTexture", 0);
         if (ground2_program->uniformLocation("shadowMap") != -1) {
             ground2_program->setUniformValue("shadowMap", 2);
-            // TODO_shadowMapping: send the right transform here
         }
         ground2_vao.bind();
         GLenum err;
         while ((err = glGetError()) != GL_NO_ERROR){
           std::cout << "GL error: " << err << std::endl;
         }
-
         int nb_arrete = ((g2_numIndices)*2);
         glDrawElements(GL_LINES, nb_arrete, GL_UNSIGNED_INT, 0);
-
         while ((err = glGetError()) != GL_NO_ERROR){
           std::cout << "GL error: " << err << std::endl;
         }
 
-        // Affichage des variables pour recherche
-
         if(animating){
-          //std::cout<< "animating" << std::endl;
           g2_numIndices = 0;
 
           updateJoints(root);
@@ -1786,18 +1714,6 @@ void glShaderWindow::render()
           animating = false;
         }
 
-        for (int i =0 ; i < g2_numPoints; i++ ){
-          //std::cout<<" g_vertices : " <<(g2_vertices)[i]<<std::endl;
-        }
-        /*
-        std::cout<<" numPoints : " <<g2_numPoints<<std::endl;
-        for (int i =0 ; i < (g2_numPoints-1)*2; i++ ){
-          std::cout<<" g2_indices : " <<(g2_indices)[i]<<std::endl;
-        }
-        std::cout<<" g2_numIndices : " <<g2_numIndices<<std::endl;
-        std::cout<<" g2_numPoints : " <<g2_numPoints<<std::endl;
-        std::cout<<" nb_arrete : " <<nb_arrete<<std::endl;
-        */
         ground2_vao.release();
         ground2_program->release();
     }

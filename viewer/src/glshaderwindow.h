@@ -57,7 +57,7 @@ public slots:
     void updateRefractions(int refractionsSliderValue);
     void updateInnerRadius(int innerRadiusSliderValue);
     void updateAnimating();
-    void updateJoints(Joint* root);
+    void updateJoints(Joint* fath);
 
 protected:
     void mousePressEvent(QMouseEvent *e);
