@@ -189,6 +189,30 @@ void Joint::fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>>
 	for (int i = 0; i < nbr_channels; i++){
 		_dofs[i]._values = values[previous_nb_c+i];
 	}
+	// filling _rorder
+	if (_dofs.size() > 0){
+		const char* c0 = (_dofs[0].name).c_str();
+		const char* c1 = (_dofs[1].name).c_str();
+		if (strcmp(c0,"Xrotation") == 0){
+			if (strcmp(c1,"Yrotation") == 0){
+				_rorder = 0;
+			} else {
+				_rorder = 3;
+			}
+		} else if (strcmp(c0,"Yrotation") == 0){
+			if (strcmp(c1,"Xrotation") == 0){
+				_rorder = 4;
+			} else {
+				_rorder = 1;
+			}
+		} else {
+			if (strcmp(c1,"Xrotation") == 0){
+				_rorder = 2;
+			} else {
+				_rorder = 5;
+			}
+		}
+	}
 	previous_nb_c += nbr_channels;
 	for (unsigned int ichild = 0 ; ichild < _children.size() ; ichild++) {
 		//if(_children[ichild]->_dofs[0]._values.empty()){
