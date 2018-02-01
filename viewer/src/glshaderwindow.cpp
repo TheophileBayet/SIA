@@ -1741,7 +1741,7 @@ void glShaderWindow::render()
         // Affichage des variables pour recherche
 
         if(animating){
-          std::cout<< "animating" << std::endl;
+          //std::cout<< "animating" << std::endl;
           g2_numIndices = 0 ;
           updateJoints(root);
           bindSceneToProgram();
@@ -1749,7 +1749,7 @@ void glShaderWindow::render()
         }
 
         for (int i =0 ; i < g2_numPoints; i++ ){
-          std::cout<<" g_vertices : " <<(g2_vertices)[i]<<std::endl;
+          //std::cout<<" g_vertices : " <<(g2_vertices)[i]<<std::endl;
         }
         /*
         std::cout<<" numPoints : " <<g2_numPoints<<std::endl;

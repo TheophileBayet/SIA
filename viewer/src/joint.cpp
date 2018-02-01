@@ -186,6 +186,7 @@ Joint* Joint::read_end(std::ifstream &inputfile){
 void Joint::fill_AnimCurves(int& previous_nb_c, std::vector<std::vector<double>> values){
 	// remplir le joint actuel
 	int nbr_channels = _dofs.size();
+
 	for (int i = 0; i < nbr_channels; i++){
 		_dofs[i]._values = values[previous_nb_c+i];
 	}
