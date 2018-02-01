@@ -26,7 +26,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
     : OpenGLWindow(parent), modelMesh(0),
       m_program(0), ground_program(0), ground2_program(0), joints_program(0), compute_program(0), shadowMapGenerationProgram(0),
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
-      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),frame(0),trn(0),
+      g2_vertices(0), g2_normals(0), g2_texcoords(0), g2_colors(0), g2_indices(0),frame(0),trn(0),rot(0),
       j_vertices(0), j_colors(0),j_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
@@ -519,7 +519,7 @@ void glShaderWindow::treeConstruct(Joint* root){
     Joint* tmp = child[i];
     // Remplir les buffer avec les valeurs de base :
     trn[g2_numIndices+1]+=trimesh::point(tmp->_curTx,tmp->_curTy,tmp->_curTz,0);
-    g2_vertices[g2_numIndices+1]=trimesh::point((g2_vertices[curr])[0]+tmp->_offX,(g2_vertices[curr])[1]+tmp->_offY,(g2_vertices[curr])[2]+tmp->_offZ,1);
+    g2_vertices[g2_numIndices+1]=trimesh::point((g2_vertices[curr])[0],(g2_vertices[curr])[1],(g2_vertices[curr])[2],1);
     g2_colors[g2_numIndices+1] = trimesh::point(1, 0, 0, 1);
     g2_normals[g2_numIndices+1]=trimesh::point(0,1,0,0);
     g2_texcoords[g2_numIndices+1]=trimesh::vec2(0,0);
@@ -528,17 +528,43 @@ void glShaderWindow::treeConstruct(Joint* root){
     g2_numIndices++;
 
     // Partie Matrices de Rotation pour animation
-    /*
-    QMatrix4x4 t_tmp;
-    trn[g2_numIndices]=t_tmp;
+
+    rX.rotate(tmp->_curRx,1,0,0);
+    rY.rotate(tmp->_curRy,0,1,0);
+    rZ.rotate(tmp->_curRz,0,0,1);
+    switch(root->_rorder){
+      case 0 :
+        M = rX*rY*rZ;
+      break;
+      case 1 :
+        M = rY*rZ*rX;
+      break;
+      case 2 :
+        M = rZ*rX*rY;
+      break ;
+      case 3 :
+        M = rX*rZ*rY;
+      break ;
+      case 4 :
+        M = rY*rX*rZ;
+      break;
+      case 5 :
+        M=rZ*rY*rX;
+      break;
+      default :
+        std::cout<< " Should not be there dude " << std::endl;
+      break;
+    }
+
+    rot[g2_numIndices]= rot[curr]*M;
+    // Recuperation de l'offset pour pouvoir faire la transformation du point
     vec = QVector4D();
-    vec.setX((g2_vertices[g2_numIndices])[0]);
-    vec.setY((g2_vertices[g2_numIndices])[1]);
-    vec.setZ((g2_vertices[g2_numIndices])[2]);
-    vec.setW(1);
-    vec = t_tmp * vec ;
-    g2_vertices[g2_numIndices] = trimesh::point(vec.x(),vec.y(),vec.z(),vec.w());
-*/
+    vec.setX(tmp->_offX);
+    vec.setY(tmp->_offY);
+    vec.setZ(tmp->_offZ);
+    vec.setW(0);
+    vec = rot[g2_numIndices] * vec ;
+    g2_vertices[g2_numIndices] += trimesh::point(vec.x(),vec.y(),vec.z(),vec.w());
     // On réitère sur les fils
     treeConstruct(tmp);
   }
@@ -768,8 +794,36 @@ void glShaderWindow::bindSceneToProgram()
     if (g2_texcoords == 0) g2_texcoords = new trimesh::vec2[g2_numPoints];
     if (g2_indices == 0) g2_indices = new int[(g2_numPoints-1)*2];
     if (trn == 0) trn = new trimesh::point[g2_numPoints];
+    if(rot==0) rot = new QMatrix4x4[g2_numPoints];
     g2_numIndices=0;
+    rX.rotate(root->_curRx,1,0,0);
+    rY.rotate(root->_curRy,0,1,0);
+    rZ.rotate(root->_curRz,0,0,1);
+    switch(root->_rorder){
+      case 0 :
+        M = rX*rY*rZ;
+      break;
+      case 1 :
+        M = rY*rZ*rX;
+      break;
+      case 2 :
+        M = rZ*rX*rY;
+      break ;
+      case 3 :
+        M = rX*rZ*rY;
+      break ;
+      case 4 :
+        M = rY*rX*rZ;
+      break;
+      case 5 :
+        M=rZ*rY*rX;
+      break;
+      default :
+        std::cout<< " Should not be there dude " << std::endl;
+      break;
+    }
     trn[0]+=trimesh::point(root->_curTx,root->_curTy,root->_curTz,0);
+    rot[0]=M;
     g2_vertices[0]=trimesh::point(root->_offX+(trn[0])[0],root->_offY+(trn[0])[1],root->_offZ+(trn[0])[2],1);
     g2_colors[0] = trimesh::point(0.6, 0.85, 0.9, 1);
     g2_normals[0]= trimesh::point(0,1,0,0);
@@ -1693,10 +1747,11 @@ void glShaderWindow::render()
           bindSceneToProgram();
           animating = false;
         }
-        /*
+
         for (int i =0 ; i < g2_numPoints; i++ ){
           std::cout<<" g_vertices : " <<(g2_vertices)[i]<<std::endl;
         }
+        /*
         std::cout<<" numPoints : " <<g2_numPoints<<std::endl;
         for (int i =0 ; i < (g2_numPoints-1)*2; i++ ){
           std::cout<<" g2_indices : " <<(g2_indices)[i]<<std::endl;

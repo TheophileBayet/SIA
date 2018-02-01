@@ -120,8 +120,14 @@ private:
     int g2_numPoints;
     int g2_numIndices;
     Joint* root;
+    // animation
     int frame;
     trimesh::point *trn ;
+    QMatrix4x4 *rot ;
+    QMatrix4x4 M;
+    QMatrix4x4 rX;
+    QMatrix4x4 rY;
+    QMatrix4x4 rZ;
     // Joints
     //TODO : adapter pour la lecture des joinst
     trimesh::point *j_vertices;
