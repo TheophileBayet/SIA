@@ -79,7 +79,7 @@ private:
     void openScene();
     void mouseToTrackball(QVector2D &in, QVector3D &out);
     int treeCount(Joint* root, int count);
-    void treeConstruct(Joint* root);
+    void treeConstruct(Joint* father);
     // Are we using GPGPU?
     bool isGPGPU;
     // Do we change the shader?
