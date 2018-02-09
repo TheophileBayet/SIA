@@ -1713,6 +1713,10 @@ void glShaderWindow::render()
           bindSceneToProgram();
           animating = false;
         }
+        /*
+        for(int i = 0 ; i < g2_numPoints; i++){
+          std::cout << " Vertices : " << g2_vertices[i] << std::endl;
+        }*/
 
         ground2_vao.release();
         ground2_program->release();
